@@ -39,6 +39,15 @@ set(RESOURCE_SOURCES
     resource/AssetLoader.cpp
 )
 
+# ECS sources
+set(ECS_SOURCES
+    ecs/World.cpp
+    ecs/components/Transform.cpp
+    ecs/components/Camera.cpp
+    ecs/systems/RenderSystem.cpp
+    ecs/ECSProtocol.cpp
+)
+
 # Remove duplicate OpenGL ES shader/texture/buffer files (using factory instead)
 # Keep only the factory implementation
 
@@ -79,6 +88,7 @@ set(ALL_SOURCES
     ${PLATFORM_SOURCES}
     ${RENDERING_SOURCES}
     ${RESOURCE_SOURCES}
+    ${ECS_SOURCES}
 )
 
 # Create library

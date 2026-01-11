@@ -29,11 +29,18 @@ if(BUILD_SAMPLES)
     )
     target_link_libraries(render_graph_demo PRIVATE SmartRenderer)
 
+    # ECS demo
+    add_executable(ecs_demo
+        ecs_demo/main.cpp
+    )
+    target_link_libraries(ecs_demo PRIVATE SmartRenderer)
+
     if(PLATFORM_WINDOWS)
         target_link_libraries(window_test PRIVATE user32 gdi32)
         target_link_libraries(basic_triangle PRIVATE user32 gdi32)
         target_link_libraries(texture_sample PRIVATE user32 gdi32)
         target_link_libraries(simple_scene PRIVATE user32 gdi32)
         target_link_libraries(render_graph_demo PRIVATE user32 gdi32)
+        target_link_libraries(ecs_demo PRIVATE user32 gdi32)
     endif()
 endif()

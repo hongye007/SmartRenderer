@@ -1,0 +1,85 @@
+{
+  "shaders": [
+    {
+      "name": "triangleShader",
+      "vertex": "#version 300 es\nprecision mediump float;\nlayout(location = 0) in vec3 aPosition;\nvoid main() { gl_Position = vec4(aPosition, 1.0); }",
+      "fragment": "#version 300 es\nprecision mediump float;\nout vec4 FragColor;\nuniform vec4 uColor;\nvoid main() { FragColor = uColor; }"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "triangleMesh",
+      "geometry": {
+        "type": "triangle",
+        "vertices": [-0.3, -0.3, 0.3, -0.3, 0.0, 0.3]
+      }
+    }
+  ],
+  "systems": [
+    {
+      "type": "RenderSystem"
+    }
+  ],
+  "entities": [
+    {
+      "name": "camera",
+      "transform": {
+        "position": [0.0, 0.0, 5.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "camera": {
+        "fov": 60.0,
+        "aspectRatio": 1.333333,
+        "nearPlane": 0.1,
+        "farPlane": 100.0,
+        "isMainCamera": true
+      }
+    },
+    {
+      "name": "triangle1",
+      "transform": {
+        "position": [-0.5, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "material": {
+        "shader": "triangleShader",
+        "albedo": [0.2, 0.6, 1.0, 1.0]
+      },
+      "mesh": {
+        "geometry": {
+          "type": "triangle",
+          "vertices": [-0.3, -0.3, 0.3, -0.3, 0.0, 0.3]
+        }
+      }
+    },
+    {
+      "name": "triangle2",
+      "transform": {
+        "position": [0.5, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "material": {
+        "shader": "triangleShader",
+        "albedo": [1.0, 0.2, 0.2, 1.0]
+      },
+      "mesh": {
+        "geometry": {
+          "type": "triangle",
+          "vertices": [-0.3, -0.3, 0.3, -0.3, 0.0, 0.3]
+        }
+      }
+    },
+    {
+      "name": "light",
+      "transform": {
+        "position": [2.0, 2.0, 2.0],
+        "scale": [1.0, 1.0, 1.0]
+      },
+      "light": {
+        "type": "Directional",
+        "color": [1.0, 1.0, 1.0, 1.0],
+        "intensity": 1.0
+      }
+    }
+  ]
+}

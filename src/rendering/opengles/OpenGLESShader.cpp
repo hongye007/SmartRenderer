@@ -25,6 +25,8 @@ extern "C" {
     GLint glGetUniformLocation(GLuint program, const char* name);
     void glUniform1f(GLint location, float v0);
     void glUniform1i(GLint location, int v0);
+    void glUniform4f(GLint location, float v0, float v1, float v2, float v3);
+    void glUniformMatrix4fv(GLint location, int count, unsigned char transpose, const float* value);
 }
 
 namespace SmartRenderer {
@@ -40,6 +42,8 @@ public:
     void Unbind() override;
     void SetUniform(const std::string& name, float value) override;
     void SetUniform(const std::string& name, int value) override;
+    void SetUniform(const std::string& name, float x, float y, float z, float w) override;
+    void SetUniform(const std::string& name, const float* matrix4x4) override;
 
 private:
     GLuint m_programID;
@@ -152,6 +156,24 @@ void OpenGLESShader::SetUniform(const std::string& name, int value) {
         GLint location = glGetUniformLocation(m_programID, name.c_str());
         if (location >= 0) {
             glUniform1i(location, value);
+        }
+    }
+}
+
+void OpenGLESShader::SetUniform(const std::string& name, float x, float y, float z, float w) {
+    if (m_programID != 0) {
+        GLint location = glGetUniformLocation(m_programID, name.c_str());
+        if (location >= 0) {
+            glUniform4f(location, x, y, z, w);
+        }
+    }
+}
+
+void OpenGLESShader::SetUniform(const std::string& name, const float* matrix4x4) {
+    if (m_programID != 0) {
+        GLint location = glGetUniformLocation(m_programID, name.c_str());
+        if (location >= 0) {
+            glUniformMatrix4fv(location, 1, 0 /* GL_FALSE */, matrix4x4);
         }
     }
 }

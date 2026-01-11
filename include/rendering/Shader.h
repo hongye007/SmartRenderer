@@ -14,6 +14,8 @@ public:
     virtual void Unbind() = 0;
     virtual void SetUniform(const std::string& name, float value) = 0;
     virtual void SetUniform(const std::string& name, int value) = 0;
+    virtual void SetUniform(const std::string& name, float x, float y, float z, float w) = 0;
+    virtual void SetUniform(const std::string& name, const float* matrix4x4) = 0;
 };
 
 } // namespace SmartRenderer

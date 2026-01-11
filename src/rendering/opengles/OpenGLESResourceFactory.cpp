@@ -18,6 +18,8 @@ public:
     void Unbind() override;
     void SetUniform(const std::string& name, float value) override;
     void SetUniform(const std::string& name, int value) override;
+    void SetUniform(const std::string& name, float x, float y, float z, float w) override;
+    void SetUniform(const std::string& name, const float* matrix4x4) override;
 
 private:
     GLuint m_programID;
@@ -199,6 +201,30 @@ void OpenGLESShaderImpl::SetUniform(const std::string& name, int value) {
     if (m_programID != 0) {
         GLint location = glGetUniformLocation(m_programID, name.c_str());
         if (location >= 0) glUniform1i(location, value);
+    }
+}
+
+void OpenGLESShaderImpl::SetUniform(const std::string& name, float x, float y, float z, float w) {
+    if (m_programID != 0) {
+        GLint location = glGetUniformLocation(m_programID, name.c_str());
+        if (location >= 0) {
+            glUniform4f(location, x, y, z, w);
+            #ifdef _DEBUG
+            fprintf(stderr, "SetUniform: %s = (%.2f, %.2f, %.2f, %.2f) [location=%d]\n", 
+                    name.c_str(), x, y, z, w, location);
+            #endif
+        } else {
+            #ifdef _DEBUG
+            fprintf(stderr, "SetUniform: Uniform '%s' not found (location=%d)\n", name.c_str(), location);
+            #endif
+        }
+    }
+}
+
+void OpenGLESShaderImpl::SetUniform(const std::string& name, const float* matrix4x4) {
+    if (m_programID != 0) {
+        GLint location = glGetUniformLocation(m_programID, name.c_str());
+        if (location >= 0) glUniformMatrix4fv(location, 1, 0 /* GL_FALSE */, matrix4x4);
     }
 }
 
