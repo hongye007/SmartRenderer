@@ -49,9 +49,9 @@ test-results/
 Thumbs.db
 desktop.ini
 
-# Third party (submodules are tracked)
-third_party/*/
-!third_party/.gitkeep
+# # Third party (submodules are tracked)
+# third_party/*/
+# !third_party/.gitkeep
 
 # Generated files
 *.generated.*
