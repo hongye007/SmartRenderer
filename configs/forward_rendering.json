@@ -1,0 +1,16 @@
+{
+  "renderGraph": {
+    "name": "ForwardRendering",
+    "nodes": [
+      {
+        "type": "GeometryPass",
+        "name": "geometryPass",
+        "outputs": ["colorBuffer", "depthBuffer"]
+      }
+    ],
+    "output": {
+      "node": "geometryPass",
+      "resource": "colorBuffer"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+#pragma once
+
+#include "platform/Platform.h"
+#include <memory>
+
+namespace SmartRenderer {
+
+class WindowsPlatform : public Platform {
+public:
+    WindowsPlatform();
+    ~WindowsPlatform() override;
+
+    bool Initialize(const PlatformConfig& config) override;
+    void Shutdown() override;
+    void RunMainLoop() override;
+    void RequestExit() override;
+
+    Window* CreateWindow(int width, int height, const std::string& title) override;
+    void DestroyWindow(Window* window) override;
+
+    InputManager* GetInputManager() override;
+    FileSystem* GetFileSystem() override;
+
+    PlatformType GetType() const override { return PlatformType::Windows; }
+    std::string GetPlatformName() const override { return "Windows"; }
+    bool IsMobile() const override { return false; }
+
+    int GetScreenWidth() const override;
+    int GetScreenHeight() const override;
+    float GetScreenDensity() const override;
+
+    std::string GetResourcePath(const std::string& relativePath) const override;
+    std::string GetWritablePath(const std::string& relativePath) const override;
+
+    double GetCurrentTime() const override;
+    double GetTimeSinceStart() const override;
+
+private:
+    PlatformConfig m_config;
+    bool m_initialized;
+    double m_startTime;
+    std::unique_ptr<InputManager> m_inputManager;
+    std::unique_ptr<FileSystem> m_fileSystem;
+};
+
+} // namespace SmartRenderer

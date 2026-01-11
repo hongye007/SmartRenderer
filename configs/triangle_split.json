@@ -1,0 +1,69 @@
+{
+  "renderGraph": {
+    "name": "TriangleSplitRendering",
+    "nodes": [
+      {
+        "type": "RenderPass",
+        "name": "blueColorNode",
+        "shader": {
+          "vertex": "#version 300 es\nprecision mediump float;\nlayout(location = 0) in vec2 aPosition;\nvoid main() { gl_Position = vec4(aPosition, 0.0, 1.0); }",
+          "fragment": "#version 300 es\nprecision mediump float;\nout vec4 FragColor;\nvoid main() { FragColor = vec4(0.0, 0.0, 1.0, 1.0); }"
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 512,
+          "height": 768
+        },
+        "geometry": {
+          "type": "triangle",
+          "vertices": [-0.5, -0.5, 0.5, -0.5, 0.0, 0.5]
+        },
+        "outputs": ["blueTriangle"]
+      },
+      {
+        "type": "RenderPass",
+        "name": "redColorNode",
+        "shader": {
+          "vertex": "#version 300 es\nprecision mediump float;\nlayout(location = 0) in vec2 aPosition;\nvoid main() { gl_Position = vec4(aPosition, 0.0, 1.0); }",
+          "fragment": "#version 300 es\nprecision mediump float;\nout vec4 FragColor;\nvoid main() { FragColor = vec4(1.0, 0.0, 0.0, 1.0); }"
+        },
+        "viewport": {
+          "x": 512,
+          "y": 0,
+          "width": 512,
+          "height": 768
+        },
+        "geometry": {
+          "type": "triangle",
+          "vertices": [-0.5, -0.5, 0.5, -0.5, 0.0, 0.5]
+        },
+        "outputs": ["redTriangle"]
+      },
+      {
+        "type": "RenderPass",
+        "name": "finalOutput",
+        "shader": {
+          "vertex": "#version 300 es\nprecision mediump float;\nlayout(location = 0) in vec2 aPosition;\nvoid main() { gl_Position = vec4(aPosition, 0.0, 1.0); }",
+          "fragment": "#version 300 es\nprecision mediump float;\nout vec4 FragColor;\nvoid main() { FragColor = vec4(0.0, 1.0, 0.0, 1.0); }"
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "geometry": {
+          "type": "triangle",
+          "vertices": [-0.3, -0.3, 0.3, -0.3, 0.0, 0.3]
+        },
+        "inputs": ["blueTriangle", "redTriangle"],
+        "outputs": ["final"]
+      }
+    ],
+    "output": {
+      "node": "finalOutput",
+      "resource": "final"
+    }
+  }
+}
