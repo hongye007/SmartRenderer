@@ -1,9 +1,11 @@
 #include "platform/Platform.h"
-#include "platform/windows/WindowsPlatform.h"
 #include <stdexcept>
 
 // Platform implementations - conditionally compile based on target
-#if defined(PLATFORM_MACOS) || defined(__APPLE__) && !defined(IOS)
+#if defined(PLATFORM_WINDOWS) || defined(_WIN32)
+#include "platform/windows/WindowsPlatform.h"
+#endif
+#if defined(PLATFORM_MACOS) || (defined(__APPLE__) && !defined(IOS))
 #include "platform/macos/MacOSPlatform.h"
 #endif
 #if defined(PLATFORM_IOS) || defined(IOS)
@@ -17,8 +19,10 @@ namespace SmartRenderer {
 
 std::unique_ptr<Platform> CreatePlatform(PlatformType type) {
     switch (type) {
+#if defined(PLATFORM_WINDOWS) || defined(_WIN32)
     case PlatformType::Windows:
         return std::make_unique<WindowsPlatform>();
+#endif
 #if defined(PLATFORM_MACOS) || (defined(__APPLE__) && !defined(IOS))
     case PlatformType::macOS: {
         MacOSPlatform* platform = new MacOSPlatform();

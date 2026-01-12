@@ -1,5 +1,7 @@
 #include "platform/macos/MacOSPlatform.h"
+#include "platform/macos/MacOSWindow.h"
 #include "platform/Platform.h"
+#include "platform/Window.h"
 #include <chrono>
 #include <memory>
 
@@ -36,7 +38,17 @@ void MacOSPlatform::RequestExit() {
 }
 
 Window* MacOSPlatform::CreateWindow(int width, int height, const std::string& title) {
-    return nullptr; // Would create macOS window
+    WindowConfig config;
+    config.width = width;
+    config.height = height;
+    config.title = title;
+    
+    MacOSWindow* window = new MacOSWindow();
+    if (window->Create(config)) {
+        return window;
+    }
+    delete window;
+    return nullptr;
 }
 
 void MacOSPlatform::DestroyWindow(Window* window) {

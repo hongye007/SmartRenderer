@@ -13,7 +13,7 @@ int main() {
     config.windowHeight = 768;
     config.appName = "ECS Demo";
     
-    auto platform = CreatePlatform(PlatformType::Windows);
+    auto platform = CreatePlatform(PlatformType::macOS);
     if (!platform->Initialize(config)) {
         std::cerr << "Failed to initialize platform" << std::endl;
         return 1;

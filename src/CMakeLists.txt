@@ -62,6 +62,7 @@ if(PLATFORM_WINDOWS)
 elseif(PLATFORM_MACOS)
     list(APPEND PLATFORM_SOURCES
         platform/macos/MacOSPlatform.cpp
+        platform/macos/MacOSWindow.cpp
     )
 elseif(PLATFORM_IOS)
     list(APPEND PLATFORM_SOURCES
@@ -116,10 +117,12 @@ elseif(PLATFORM_MACOS OR PLATFORM_IOS)
     find_library(COCOA_FRAMEWORK Cocoa)
     find_library(IOKIT_FRAMEWORK IOKit)
     find_library(COREVIDEO_FRAMEWORK CoreVideo)
+    find_library(OPENGL_FRAMEWORK OpenGL)
     target_link_libraries(SmartRenderer PRIVATE
         ${COCOA_FRAMEWORK}
         ${IOKIT_FRAMEWORK}
         ${COREVIDEO_FRAMEWORK}
+        ${OPENGL_FRAMEWORK}
     )
 elseif(PLATFORM_ANDROID)
     find_library(ANDROID_LOG_LIB log)

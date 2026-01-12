@@ -7,6 +7,8 @@
 
 #ifdef USE_ANGLE
 #include <GLES3/gl3.h>
+#elif defined(__APPLE__)
+#include <OpenGL/gl3.h>
 #endif
 
 namespace SmartRenderer {
