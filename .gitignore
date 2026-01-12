@@ -3,11 +3,11 @@ build/
 out/
 bin/
 lib/
-*.a
-*.lib
-*.dll
-*.so
-*.dylib
+# *.a
+# *.lib
+# *.dll
+# *.so
+# *.dylib
 
 # IDE files
 .vs/
