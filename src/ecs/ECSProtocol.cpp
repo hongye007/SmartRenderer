@@ -109,13 +109,6 @@ bool ECSProtocol::ParseShaders(const json& shadersJson) {
         Shader* shader = m_renderer->CreateShader(vertexSrc, fragmentSrc);
         if (shader && shader->IsValid()) {
             m_shaders[name] = shader;
-            #ifdef _DEBUG
-            fprintf(stderr, "ECSProtocol: Created shader '%s'\n", name.c_str());
-            #endif
-        } else {
-            #ifdef _DEBUG
-            fprintf(stderr, "ECSProtocol: Failed to create shader '%s'\n", name.c_str());
-            #endif
         }
     }
     return true;
@@ -135,9 +128,6 @@ bool ECSProtocol::ParseMeshes(const json& meshesJson) {
             auto mesh = CreateMeshFromGeometry(meshJson["geometry"], Vector3::Zero);
             if (mesh) {
                 m_meshes[name] = mesh;
-                #ifdef _DEBUG
-                fprintf(stderr, "ECSProtocol: Created mesh '%s'\n", name.c_str());
-                #endif
             }
         }
     }

@@ -3,6 +3,8 @@
 #include "platform/Window.h"
 #include <string>
 
+struct GLFWwindow;
+
 namespace SmartRenderer {
 
 struct WindowHandle {
@@ -56,10 +58,20 @@ public:
     void SwapBuffers() override;
 
 private:
+    GLFWwindow* m_window;
     WindowConfig m_config;
     bool m_shouldClose;
     bool m_visible;
     WindowHandle m_handle;
+    
+    WindowResizeCallback m_resizeCallback;
+    WindowCloseCallback m_closeCallback;
+    WindowFocusCallback m_focusCallback;
+
+    // Static callbacks for GLFW
+    static void OnWindowResize(GLFWwindow* window, int width, int height);
+    static void OnWindowClose(GLFWwindow* window);
+    static void OnWindowFocus(GLFWwindow* window, int focused);
 };
 
 } // namespace SmartRenderer

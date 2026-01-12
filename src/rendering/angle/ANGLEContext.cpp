@@ -1,10 +1,14 @@
 #include "rendering/angle/ANGLEContext.h"
 #include "platform/Window.h"
 #include <stdexcept>
-
-#ifdef USE_ANGLE
+#include <cstring>
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
+#ifdef __APPLE__
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_COCOA
+#define GLFW_EXPOSE_NATIVE_EGL
+#include <GLFW/glfw3native.h>
 #endif
 
 namespace SmartRenderer {
@@ -14,7 +18,8 @@ ANGLEContext::ANGLEContext()
     , m_context(EGL_NO_CONTEXT)
     , m_surface(EGL_NO_SURFACE)
     , m_config(nullptr)
-    , m_initialized(false) {
+    , m_initialized(false)
+    , m_usingGLFW(false) {
 }
 
 ANGLEContext::~ANGLEContext() {
@@ -30,34 +35,21 @@ bool ANGLEContext::Initialize(Window* window, const ANGLEConfig& config) {
         return false;
     }
 
-    // Configure backend
     ConfigureBackend(config);
 
-    // Initialize EGL
-    if (!InitializeEGL()) {
+    // Try to use GLFW's EGL context first (if available)
+    if (TryUseGLFWEGL(window)) {
+        m_initialized = true;
+        return MakeCurrent();
+    }
+
+    // Fallback: Initialize EGL ourselves
+    if (!InitializeEGL() || !CreateContext() || !CreateSurface(window)) {
         return false;
     }
 
-    // Create context
-    if (!CreateContext()) {
-        return false;
-    }
-
-    // Create surface
-    if (!CreateSurface(window)) {
-        return false;
-    }
-
-    // Mark as initialized before MakeCurrent
     m_initialized = true;
-
-    // Make context current
-    if (!MakeCurrent()) {
-        m_initialized = false;
-        return false;
-    }
-
-    return true;
+    return MakeCurrent();
 }
 
 void ANGLEContext::Shutdown() {
@@ -65,53 +57,35 @@ void ANGLEContext::Shutdown() {
         return;
     }
 
-#ifdef USE_ANGLE
     eglMakeCurrent(m_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     
-    if (m_context != EGL_NO_CONTEXT) {
-        eglDestroyContext(m_display, m_context);
+    // Only destroy EGL objects if we created them (not using GLFW's)
+    if (!m_usingGLFW) {
+        if (m_context != EGL_NO_CONTEXT) {
+            eglDestroyContext(m_display, m_context);
+        }
+        if (m_surface != EGL_NO_SURFACE) {
+            eglDestroySurface(m_display, m_surface);
+        }
+        if (m_display != EGL_NO_DISPLAY) {
+            eglTerminate(m_display);
+        }
     }
-    
-    if (m_surface != EGL_NO_SURFACE) {
-        eglDestroySurface(m_display, m_surface);
-    }
-    
-    if (m_display != EGL_NO_DISPLAY) {
-        eglTerminate(m_display);
-    }
-#endif
 
     m_display = EGL_NO_DISPLAY;
     m_context = EGL_NO_CONTEXT;
     m_surface = EGL_NO_SURFACE;
     m_config = nullptr;
     m_initialized = false;
+    m_usingGLFW = false;
 }
 
 bool ANGLEContext::MakeCurrent() {
     if (!m_initialized) {
-        #ifdef _DEBUG
-        fprintf(stderr, "MakeCurrent: not initialized\n");
-        #endif
         return false;
     }
 
-#ifdef USE_ANGLE
-    EGLBoolean result = eglMakeCurrent(m_display, m_surface, m_surface, m_context);
-    if (result != EGL_TRUE) {
-        #ifdef _DEBUG
-        fprintf(stderr, "eglMakeCurrent failed\n");
-        #endif
-        return false;
-    }
-    
-    #ifdef _DEBUG
-    fprintf(stderr, "eglMakeCurrent succeeded\n");
-    #endif
-    return true;
-#else
-    return true;
-#endif
+    return eglMakeCurrent(m_display, m_surface, m_surface, m_context) == EGL_TRUE;
 }
 
 void ANGLEContext::SwapBuffers() {
@@ -119,9 +93,7 @@ void ANGLEContext::SwapBuffers() {
         return;
     }
 
-#ifdef USE_ANGLE
     eglSwapBuffers(m_display, m_surface);
-#endif
 }
 
 void ANGLEContext::SetSwapInterval(int interval) {
@@ -129,9 +101,7 @@ void ANGLEContext::SetSwapInterval(int interval) {
         return;
     }
 
-#ifdef USE_ANGLE
     eglSwapInterval(m_display, interval);
-#endif
 }
 
 ANGLEConfig::BackendType ANGLEContext::GetDefaultBackend() {
@@ -147,43 +117,28 @@ ANGLEConfig::BackendType ANGLEContext::GetDefaultBackend() {
 }
 
 bool ANGLEContext::InitializeEGL() {
-#ifdef USE_ANGLE
     m_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (m_display == EGL_NO_DISPLAY) {
-        #ifdef _DEBUG
-        fprintf(stderr, "eglGetDisplay failed\n");
-        #endif
         return false;
     }
     
     EGLint major, minor;
     if (eglInitialize(m_display, &major, &minor) != EGL_TRUE) {
-        #ifdef _DEBUG
-        fprintf(stderr, "eglInitialize failed\n");
-        #endif
         return false;
     }
     
-    #ifdef _DEBUG
-    fprintf(stderr, "EGL initialized: version %d.%d\n", major, minor);
-    #endif
-    
     return true;
-#else
-    // Stub implementation
-    m_display = reinterpret_cast<EGLDisplay>(0x1); // Placeholder
-    return true;
-#endif
 }
 
 bool ANGLEContext::CreateContext() {
-#ifdef USE_ANGLE
-    // Choose config
     EGLint configAttribs[] = {
         EGL_RED_SIZE, 8,
         EGL_GREEN_SIZE, 8,
         EGL_BLUE_SIZE, 8,
+        EGL_ALPHA_SIZE, 8,
         EGL_DEPTH_SIZE, 24,
+        EGL_STENCIL_SIZE, 8,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
         EGL_NONE
     };
@@ -191,15 +146,11 @@ bool ANGLEContext::CreateContext() {
     EGLint numConfigs;
     EGLConfig config;
     if (eglChooseConfig(m_display, configAttribs, &config, 1, &numConfigs) != EGL_TRUE || numConfigs == 0) {
-        #ifdef _DEBUG
-        fprintf(stderr, "eglChooseConfig failed, numConfigs=%d\n", numConfigs);
-        #endif
         return false;
     }
     
     m_config = config;
     
-    // Create context
     EGLint contextAttribs[] = {
         EGL_CONTEXT_MAJOR_VERSION, 3,
         EGL_CONTEXT_MINOR_VERSION, 0,
@@ -207,89 +158,100 @@ bool ANGLEContext::CreateContext() {
     };
     
     m_context = eglCreateContext(m_display, m_config, EGL_NO_CONTEXT, contextAttribs);
-    if (m_context == EGL_NO_CONTEXT) {
-        #ifdef _DEBUG
-        fprintf(stderr, "eglCreateContext failed\n");
-        #endif
+    return m_context != EGL_NO_CONTEXT;
+}
+
+bool ANGLEContext::TryUseGLFWEGL(Window* window) {
+    #ifdef __APPLE__
+    void* handle = window->GetNativeHandle();
+    if (!handle) {
         return false;
     }
+
+    struct WindowHandle { void* nsWindow; void* nsView; };
+    WindowHandle* macHandle = static_cast<WindowHandle*>(handle);
+    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(macHandle->nsWindow);
     
-    #ifdef _DEBUG
-    fprintf(stderr, "EGL context created successfully\n");
+    if (!glfwWindow) {
+        return false;
+    }
+
+    EGLDisplay glfwDisplay = glfwGetEGLDisplay();
+    EGLContext glfwContext = glfwGetEGLContext(glfwWindow);
+    EGLSurface glfwSurface = glfwGetEGLSurface(glfwWindow);
+    
+    if (glfwDisplay != EGL_NO_DISPLAY && glfwContext != EGL_NO_CONTEXT && glfwSurface != EGL_NO_SURFACE) {
+        m_display = glfwDisplay;
+        m_context = glfwContext;
+        m_surface = glfwSurface;
+        m_usingGLFW = true;
+        return true;
+    }
     #endif
-    
-    return true;
-#else
-    // Stub implementation
-    m_context = reinterpret_cast<EGLContext>(0x1); // Placeholder
-    return true;
-#endif
+    return false;
 }
 
 bool ANGLEContext::CreateSurface(Window* window) {
     if (!window) {
-        #ifdef _DEBUG
-        fprintf(stderr, "CreateSurface: window is null\n");
-        #endif
         return false;
     }
 
-#ifdef USE_ANGLE
     void* handle = window->GetNativeHandle();
     if (!handle) {
-        #ifdef _DEBUG
-        fprintf(stderr, "CreateSurface: GetNativeHandle returned null\n");
-        #endif
         return false;
     }
     
     EGLint surfaceAttribs[] = { EGL_NONE };
     
-    // On Windows, WindowHandle is a struct with hwnd member
     #ifdef _WIN32
-    // Cast to WindowHandle pointer and access hwnd
     struct WindowHandle { void* hwnd; void* hdc; };
     WindowHandle* winHandle = static_cast<WindowHandle*>(handle);
-    
-    #ifdef _DEBUG
-    fprintf(stderr, "Creating EGL surface for HWND: %p\n", winHandle->hwnd);
-    #endif
-    
     m_surface = eglCreateWindowSurface(m_display, static_cast<EGLConfig>(m_config), 
                                       static_cast<EGLNativeWindowType>(winHandle->hwnd), 
                                       surfaceAttribs);
+    #elif defined(__APPLE__)
+    // Fallback: use NSView directly (GLFW EGL should have been tried in Initialize)
+    struct WindowHandle { void* nsWindow; void* nsView; };
+    WindowHandle* macHandle = static_cast<WindowHandle*>(handle);
+    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(macHandle->nsWindow);
+    
+    if (!glfwWindow) {
+        return false;
+    }
+    
+    id nsView = glfwGetCocoaView(glfwWindow);
+    if (!nsView) {
+        return false;
+    }
+    
+    // Try eglCreatePlatformWindowSurface first, fallback to eglCreateWindowSurface
+    typedef EGLSurface (*PFNEGLCREATEPLATFORMWINDOWSURFACE)(EGLDisplay, EGLConfig, void*, const EGLAttrib*);
+    PFNEGLCREATEPLATFORMWINDOWSURFACE eglCreatePlatformWindowSurfacePtr = 
+        (PFNEGLCREATEPLATFORMWINDOWSURFACE)eglGetProcAddress("eglCreatePlatformWindowSurface");
+    
+    if (eglCreatePlatformWindowSurfacePtr) {
+        EGLAttrib platformAttribs[] = { EGL_NONE };
+        m_surface = eglCreatePlatformWindowSurfacePtr(m_display, static_cast<EGLConfig>(m_config), 
+                                                     nsView, platformAttribs);
+    }
+    
+    if (m_surface == EGL_NO_SURFACE) {
+        m_surface = eglCreateWindowSurface(m_display, static_cast<EGLConfig>(m_config), 
+                                          static_cast<EGLNativeWindowType>(nsView), 
+                                          surfaceAttribs);
+    }
     #else
     m_surface = eglCreateWindowSurface(m_display, static_cast<EGLConfig>(m_config), 
                                       static_cast<EGLNativeWindowType>(handle), 
                                       surfaceAttribs);
     #endif
     
-    if (m_surface == EGL_NO_SURFACE) {
-        #ifdef _DEBUG
-        fprintf(stderr, "eglCreateWindowSurface failed\n");
-        #endif
-        return false;
-    }
-    
-    #ifdef _DEBUG
-    fprintf(stderr, "EGL surface created successfully\n");
-    #endif
-    
-    return true;
-#else
-    // Stub implementation
-    m_surface = reinterpret_cast<EGLSurface>(0x1); // Placeholder
-    return true;
-#endif
+    return m_surface != EGL_NO_SURFACE;
 }
 
 void ANGLEContext::ConfigureBackend(const ANGLEConfig& config) {
-    // In real implementation, would set EGL attributes based on backend type:
-    // EGLint attribs[] = {
-    //     EGL_PLATFORM_ANGLE_TYPE_ANGLE, ...,
-    //     EGL_NONE
-    // };
-    // eglSetAttribute(EGL_PLATFORM_ANGLE_TYPE_ANGLE, ...);
+    // ANGLE automatically selects the appropriate backend for each platform
+    // Windows: D3D11, macOS: Metal, Android: OpenGL ES
 }
 
 } // namespace SmartRenderer

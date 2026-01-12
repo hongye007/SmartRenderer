@@ -201,13 +201,17 @@ std::vector<Entity> World::GetEntitiesWith() const {
     
     // Start with first list
     result = entityLists[0];
+    std::sort(result.begin(), result.end());
     
     // Intersect with remaining lists
     for (size_t i = 1; i < entityLists.size(); ++i) {
+        std::vector<Entity> sortedList = entityLists[i];
+        std::sort(sortedList.begin(), sortedList.end());
+        
         std::vector<Entity> intersection;
         std::set_intersection(
             result.begin(), result.end(),
-            entityLists[i].begin(), entityLists[i].end(),
+            sortedList.begin(), sortedList.end(),
             std::back_inserter(intersection)
         );
         result = intersection;

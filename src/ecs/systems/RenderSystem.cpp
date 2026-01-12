@@ -59,14 +59,6 @@ void RenderSystem::Update(World& world, float deltaTime) {
     // Render all entities with Transform, Mesh, and Material
     auto renderableEntities = world.GetEntitiesWith<Transform, MeshComponent, Material>();
     
-    #ifdef _DEBUG
-    if (renderableEntities.empty()) {
-        fprintf(stderr, "RenderSystem: No renderable entities found\n");
-    } else {
-        fprintf(stderr, "RenderSystem: Found %zu renderable entities\n", renderableEntities.size());
-    }
-    #endif
-    
     for (Entity entity : renderableEntities) {
         RenderEntity(world, entity, viewProjMatrix);
     }
@@ -89,7 +81,7 @@ void RenderSystem::RenderEntity(World& world, Entity entity, const Matrix4& view
     m_renderer->BindShader(material->shader);
     
     // Set uniforms
-    if (material->shader->IsValid()) {
+    if (material->shader && material->shader->IsValid()) {
         // Material color (for simplified 2D shader)
         material->shader->SetUniform("uColor", 
             material->albedo.r, 
@@ -97,20 +89,17 @@ void RenderSystem::RenderEntity(World& world, Entity entity, const Matrix4& view
             material->albedo.b, 
             material->albedo.a);
         
-        #ifdef _DEBUG
-        fprintf(stderr, "RenderSystem: Rendering entity %u, color (%.2f, %.2f, %.2f, %.2f)\n",
-                entity, material->albedo.r, material->albedo.g, material->albedo.b, material->albedo.a);
-        #endif
-        
-        // Material properties
+        // Material properties (these uniforms may not exist in simple shader, but that's OK)
         material->shader->SetUniform("uMetallic", material->metallic);
         material->shader->SetUniform("uRoughness", material->roughness);
-        
-        // Textures
-        if (material->albedoTexture) {
-            material->albedoTexture->Bind(0);
-            material->shader->SetUniform("uAlbedoTexture", 0);
-        }
+    } else {
+        return;
+    }
+    
+    // Textures
+    if (material->albedoTexture) {
+        material->albedoTexture->Bind(0);
+        material->shader->SetUniform("uAlbedoTexture", 0);
     }
     
     // Bind vertex array and draw
@@ -118,20 +107,10 @@ void RenderSystem::RenderEntity(World& world, Entity entity, const Matrix4& view
         m_renderer->BindVertexArray(meshComp->mesh->vertexArray);
         
         if (meshComp->mesh->indexBuffer && meshComp->mesh->indexCount > 0) {
-            #ifdef _DEBUG
-            fprintf(stderr, "RenderSystem: Drawing %d indices\n", meshComp->mesh->indexCount);
-            #endif
             m_renderer->DrawElements(0, meshComp->mesh->indexCount);
         } else if (meshComp->mesh->vertexCount > 0) {
-            #ifdef _DEBUG
-            fprintf(stderr, "RenderSystem: Drawing %d vertices\n", meshComp->mesh->vertexCount);
-            #endif
             m_renderer->DrawArrays(0, meshComp->mesh->vertexCount);
         }
-    } else {
-        #ifdef _DEBUG
-        fprintf(stderr, "RenderSystem: No vertex array or mesh for entity %u\n", entity);
-        #endif
     }
 }
 

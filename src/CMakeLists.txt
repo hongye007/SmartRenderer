@@ -64,6 +64,13 @@ elseif(PLATFORM_MACOS)
         platform/macos/MacOSPlatform.cpp
         platform/macos/MacOSWindow.cpp
     )
+    # Set macOS files to compile as Objective-C++
+    set_source_files_properties(platform/macos/MacOSPlatform.cpp PROPERTIES
+        COMPILE_FLAGS "-x objective-c++"
+    )
+    set_source_files_properties(platform/macos/MacOSWindow.cpp PROPERTIES
+        COMPILE_FLAGS "-x objective-c++"
+    )
 elseif(PLATFORM_IOS)
     list(APPEND PLATFORM_SOURCES
         platform/ios/IOSPlatform.cpp
@@ -118,15 +125,40 @@ elseif(PLATFORM_MACOS OR PLATFORM_IOS)
     find_library(IOKIT_FRAMEWORK IOKit)
     find_library(COREVIDEO_FRAMEWORK CoreVideo)
     find_library(OPENGL_FRAMEWORK OpenGL)
+    find_library(QUARTZCORE_FRAMEWORK QuartzCore)
     target_link_libraries(SmartRenderer PRIVATE
         ${COCOA_FRAMEWORK}
         ${IOKIT_FRAMEWORK}
         ${COREVIDEO_FRAMEWORK}
         ${OPENGL_FRAMEWORK}
+        ${QUARTZCORE_FRAMEWORK}
     )
 elseif(PLATFORM_ANDROID)
     find_library(ANDROID_LOG_LIB log)
     target_link_libraries(SmartRenderer PRIVATE ${ANDROID_LOG_LIB})
+endif()
+
+# GLFW integration for macOS
+if(PLATFORM_MACOS)
+    set(GLFW_ROOT "${CMAKE_SOURCE_DIR}/third_party/gl-env/glfw/mac")
+    set(GLFW_INCLUDE_DIR "${GLFW_ROOT}/include")
+    set(GLFW_LIB_DIR "${GLFW_ROOT}/lib-universal")
+    
+    if(EXISTS "${GLFW_INCLUDE_DIR}/GLFW/glfw3.h")
+        message(STATUS "Found GLFW headers: ${GLFW_INCLUDE_DIR}")
+        target_include_directories(SmartRenderer PUBLIC ${GLFW_INCLUDE_DIR})
+        
+        # Link GLFW library
+        set(GLFW_LIB "${GLFW_LIB_DIR}/libglfw3.a")
+        if(EXISTS "${GLFW_LIB}")
+            message(STATUS "Found GLFW library: ${GLFW_LIB}")
+            target_link_libraries(SmartRenderer PRIVATE ${GLFW_LIB})
+        else()
+            message(WARNING "GLFW library not found at ${GLFW_LIB}")
+        endif()
+    else()
+        message(WARNING "GLFW headers not found at ${GLFW_INCLUDE_DIR}")
+    endif()
 endif()
 
 # ANGLE integration
@@ -168,21 +200,31 @@ if(USE_ANGLE)
             else()
                 message(WARNING "ANGLE libraries not found in ${ANGLE_LIB_DIR}")
             endif()
-        elseif(PLATFORM_MACOS)
-            set(ANGLE_LIB_DIR "${ANGLE_ROOT}/libs/mac")
-            
-            # macOS: Use .dylib libraries
-            set(ANGLE_EGL_LIB "${ANGLE_LIB_DIR}/libEGL.dylib")
-            set(ANGLE_GLES_LIB "${ANGLE_LIB_DIR}/libGLESv2.dylib")
-            
-            if(EXISTS "${ANGLE_EGL_LIB}" AND EXISTS "${ANGLE_GLES_LIB}")
-                message(STATUS "Found ANGLE EGL: ${ANGLE_EGL_LIB}")
-                message(STATUS "Found ANGLE GLESv2: ${ANGLE_GLES_LIB}")
-                target_link_libraries(SmartRenderer PRIVATE ${ANGLE_EGL_LIB} ${ANGLE_GLES_LIB})
-                target_compile_definitions(SmartRenderer PUBLIC USE_ANGLE=1)
-            else()
-                message(WARNING "ANGLE libraries not found in ${ANGLE_LIB_DIR}")
-            endif()
+         elseif(PLATFORM_MACOS)
+             set(ANGLE_LIB_DIR "${ANGLE_ROOT}/libs/mac")
+             
+             # macOS: Use .dylib libraries
+             set(ANGLE_EGL_LIB "${ANGLE_LIB_DIR}/libEGL.dylib")
+             set(ANGLE_GLES_LIB "${ANGLE_LIB_DIR}/libGLESv2.dylib")
+             
+             if(EXISTS "${ANGLE_EGL_LIB}" AND EXISTS "${ANGLE_GLES_LIB}")
+                 message(STATUS "Found ANGLE EGL: ${ANGLE_EGL_LIB}")
+                 message(STATUS "Found ANGLE GLESv2: ${ANGLE_GLES_LIB}")
+                 target_link_libraries(SmartRenderer PRIVATE ${ANGLE_EGL_LIB} ${ANGLE_GLES_LIB})
+                 
+                 # Copy dylibs to output directory
+                 add_custom_command(TARGET SmartRenderer POST_BUILD
+                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                         "${ANGLE_EGL_LIB}"
+                         "${ANGLE_GLES_LIB}"
+                         $<TARGET_FILE_DIR:SmartRenderer>
+                     COMMENT "Copying ANGLE dylibs to output directory"
+                 )
+                 
+                 target_compile_definitions(SmartRenderer PUBLIC USE_ANGLE=1)
+             else()
+                 message(WARNING "ANGLE libraries not found in ${ANGLE_LIB_DIR}")
+             endif()
         endif()
     else()
         message(WARNING "ANGLE headers not found at ${ANGLE_INCLUDE_DIR}")

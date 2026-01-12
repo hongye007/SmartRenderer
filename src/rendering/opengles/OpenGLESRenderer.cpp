@@ -47,9 +47,7 @@ bool OpenGLESRenderer::Initialize(Window* window, const RendererConfig& config) 
 
     if (!m_context->Initialize(window, angleConfig)) {
         // Log error
-        #ifdef _DEBUG
         fprintf(stderr, "Failed to initialize ANGLE context\n");
-        #endif
         return false;
     }
 
@@ -74,6 +72,20 @@ void OpenGLESRenderer::Shutdown() {
 }
 
 void OpenGLESRenderer::BeginFrame() {
+    // Ensure context is current (important for GLFW EGL)
+    if (m_context) {
+        m_context->MakeCurrent();
+    }
+    
+    // Set viewport to match window size
+    if (m_window) {
+        int width, height;
+        m_window->GetFramebufferSize(width, height);
+        if (width > 0 && height > 0) {
+            glViewport(0, 0, width, height);
+        }
+    }
+    
     // Clear state
     m_currentShader = nullptr;
     m_currentVAO = nullptr;
@@ -98,15 +110,15 @@ void OpenGLESRenderer::Clear(ClearFlags flags, const Color& color, float depth, 
     GLbitfield clearFlags = 0;
     if ((flags & ClearFlags::Color) != ClearFlags::None) {
         glClearColor(color.r, color.g, color.b, color.a);
-        clearFlags |= 0x00004000; // GL_COLOR_BUFFER_BIT
+        clearFlags |= GL_COLOR_BUFFER_BIT;
     }
     if ((flags & ClearFlags::Depth) != ClearFlags::None) {
         glClearDepthf(depth);
-        clearFlags |= 0x00000100; // GL_DEPTH_BUFFER_BIT
+        clearFlags |= GL_DEPTH_BUFFER_BIT;
     }
     if ((flags & ClearFlags::Stencil) != ClearFlags::None) {
         glClearStencil(stencil);
-        clearFlags |= 0x00000400; // GL_STENCIL_BUFFER_BIT
+        clearFlags |= GL_STENCIL_BUFFER_BIT;
     }
     if (clearFlags != 0) {
         glClear(clearFlags);

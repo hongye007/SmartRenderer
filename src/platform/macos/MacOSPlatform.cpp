@@ -18,6 +18,10 @@ MacOSPlatform::~MacOSPlatform() {
 bool MacOSPlatform::Initialize(const PlatformConfig& config) {
     if (m_initialized) return true;
     m_config = config;
+    
+    // GLFW will handle window initialization
+    // No need to initialize NSApplication here
+    
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = now.time_since_epoch();
     m_startTime = std::chrono::duration<double>(duration).count();

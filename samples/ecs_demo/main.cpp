@@ -3,6 +3,8 @@
 #include "core/RenderContext.h"
 #include <iostream>
 #include <memory>
+#include <thread>
+#include <chrono>
 
 using namespace SmartRenderer;
 
@@ -27,6 +29,13 @@ int main() {
     }
     
     window->Show();
+    
+    // Poll events a few times to ensure window is fully displayed
+    // This is important for ANGLE to work correctly with GLFW on macOS
+    for (int i = 0; i < 5; ++i) {
+        window->PollEvents();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
     
     // Create renderer
     RendererConfig renderConfig;

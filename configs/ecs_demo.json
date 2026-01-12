@@ -2,8 +2,8 @@
   "shaders": [
     {
       "name": "triangleShader",
-      "vertex": "#version 300 es\nprecision mediump float;\nlayout(location = 0) in vec3 aPosition;\nvoid main() { gl_Position = vec4(aPosition, 1.0); }",
-      "fragment": "#version 300 es\nprecision mediump float;\nout vec4 FragColor;\nuniform vec4 uColor;\nvoid main() { FragColor = uColor; }"
+      "vertex": "#version 100\nprecision mediump float;\nattribute vec3 aPosition;\nvoid main() {\n  gl_Position = vec4(aPosition, 1.0);\n}",
+      "fragment": "#version 100\nprecision mediump float;\nvarying vec4 FragColor;\nuniform vec4 uColor;\nvoid main() {\n  gl_FragColor = uColor;\n}"
     }
   ],
   "meshes": [

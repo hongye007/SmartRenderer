@@ -1,5 +1,6 @@
 #include "rendering/opengles/OpenGLESResourceFactory.h"
 #include "rendering/opengles/OpenGLESTypes.h"
+#include <GLES3/gl3.h>
 #include <string>
 #include <vector>
 #include <memory>
@@ -136,10 +137,8 @@ GLuint OpenGLESShaderImpl::CompileShader(GLenum type, const std::string& source)
         char infoLog[512];
         GLint infoLogLength = 0;
         glGetShaderInfoLog(shader, 512, &infoLogLength, infoLog);
-        #ifdef _DEBUG
         fprintf(stderr, "Shader compilation failed (%s):\n%s\n", 
                 type == GL_VERTEX_SHADER ? "vertex" : "fragment", infoLog);
-        #endif
         glDeleteShader(shader);
         return 0;
     }
@@ -149,14 +148,17 @@ GLuint OpenGLESShaderImpl::CompileShader(GLenum type, const std::string& source)
 bool OpenGLESShaderImpl::LinkProgram(GLuint vertexShader, GLuint fragmentShader) {
     m_programID = glCreateProgram();
     if (m_programID == 0) {
-        #ifdef _DEBUG
         fprintf(stderr, "Failed to create shader program\n");
-        #endif
         return false;
     }
 
     glAttachShader(m_programID, vertexShader);
     glAttachShader(m_programID, fragmentShader);
+    
+    // Bind attribute location for GLSL ES 100 (OpenGL ES 2.0)
+    // In ES 2.0, we need to bind attributes before linking
+    glBindAttribLocation(m_programID, 0, "aPosition");
+    
     glLinkProgram(m_programID);
 
     GLint success = 0;
@@ -165,16 +167,11 @@ bool OpenGLESShaderImpl::LinkProgram(GLuint vertexShader, GLuint fragmentShader)
         char infoLog[512];
         GLint infoLogLength = 0;
         glGetProgramInfoLog(m_programID, 512, &infoLogLength, infoLog);
-        #ifdef _DEBUG
         fprintf(stderr, "Shader program linking failed:\n%s\n", infoLog);
-        #endif
         glDeleteProgram(m_programID);
         m_programID = 0;
         return false;
     }
-    #ifdef _DEBUG
-    fprintf(stderr, "Shader program created successfully (ID: %u)\n", m_programID);
-    #endif
     return true;
 }
 
@@ -209,14 +206,6 @@ void OpenGLESShaderImpl::SetUniform(const std::string& name, float x, float y, f
         GLint location = glGetUniformLocation(m_programID, name.c_str());
         if (location >= 0) {
             glUniform4f(location, x, y, z, w);
-            #ifdef _DEBUG
-            fprintf(stderr, "SetUniform: %s = (%.2f, %.2f, %.2f, %.2f) [location=%d]\n", 
-                    name.c_str(), x, y, z, w, location);
-            #endif
-        } else {
-            #ifdef _DEBUG
-            fprintf(stderr, "SetUniform: Uniform '%s' not found (location=%d)\n", name.c_str(), location);
-            #endif
         }
     }
 }
