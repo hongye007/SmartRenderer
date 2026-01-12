@@ -42,5 +42,19 @@ if(BUILD_SAMPLES)
         target_link_libraries(simple_scene PRIVATE user32 gdi32)
         target_link_libraries(render_graph_demo PRIVATE user32 gdi32)
         target_link_libraries(ecs_demo PRIVATE user32 gdi32)
+        
+        # Copy ANGLE DLLs to sample output directories
+        if(USE_ANGLE)
+            set(ANGLE_LIB_DIR "${CMAKE_SOURCE_DIR}/third_party/gl-env/angle/libs/windows")
+            foreach(SAMPLE_TARGET window_test basic_triangle texture_sample simple_scene render_graph_demo ecs_demo)
+                add_custom_command(TARGET ${SAMPLE_TARGET} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${ANGLE_LIB_DIR}/libEGL.dll"
+                        "${ANGLE_LIB_DIR}/libGLESv2.dll"
+                        $<TARGET_FILE_DIR:${SAMPLE_TARGET}>
+                    COMMENT "Copying ANGLE DLLs for ${SAMPLE_TARGET}"
+                )
+            endforeach()
+        endif()
     endif()
 endif()
