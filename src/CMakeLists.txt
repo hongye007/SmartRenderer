@@ -130,33 +130,59 @@ endif()
 if(USE_ANGLE)
     message(STATUS "ANGLE integration enabled")
     
-    # Find ANGLE libraries
-    set(ANGLE_ROOT "${CMAKE_SOURCE_DIR}/third_party/angle")
+    # Find ANGLE libraries from gl-env directory
+    set(ANGLE_ROOT "${CMAKE_SOURCE_DIR}/third_party/gl-env/angle")
     set(ANGLE_INCLUDE_DIR "${ANGLE_ROOT}/include")
-    set(ANGLE_LIB_DIR "${ANGLE_ROOT}/lib")
     
     if(EXISTS "${ANGLE_INCLUDE_DIR}/EGL/egl.h")
         message(STATUS "Found ANGLE headers: ${ANGLE_INCLUDE_DIR}")
         target_include_directories(SmartRenderer PUBLIC ${ANGLE_INCLUDE_DIR})
         
-        # Link ANGLE libraries
+        # Link ANGLE libraries based on platform
         if(PLATFORM_WINDOWS)
-            find_library(ANGLE_EGL_LIB NAMES libEGL PATHS ${ANGLE_LIB_DIR} NO_DEFAULT_PATH)
-            find_library(ANGLE_GLES_LIB NAMES libGLESv2 PATHS ${ANGLE_LIB_DIR} NO_DEFAULT_PATH)
+            set(ANGLE_LIB_DIR "${ANGLE_ROOT}/libs/windows")
             
-            if(ANGLE_EGL_LIB AND ANGLE_GLES_LIB)
+            # Windows: Use .dll.lib import libraries
+            set(ANGLE_EGL_LIB "${ANGLE_LIB_DIR}/libEGL.dll.lib")
+            set(ANGLE_GLES_LIB "${ANGLE_LIB_DIR}/libGLESv2.dll.lib")
+            
+            if(EXISTS "${ANGLE_EGL_LIB}" AND EXISTS "${ANGLE_GLES_LIB}")
                 message(STATUS "Found ANGLE EGL: ${ANGLE_EGL_LIB}")
                 message(STATUS "Found ANGLE GLESv2: ${ANGLE_GLES_LIB}")
                 target_link_libraries(SmartRenderer PRIVATE ${ANGLE_EGL_LIB} ${ANGLE_GLES_LIB})
+                
+                # Copy DLLs to output directory
+                add_custom_command(TARGET SmartRenderer POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${ANGLE_LIB_DIR}/libEGL.dll"
+                        "${ANGLE_LIB_DIR}/libGLESv2.dll"
+                        $<TARGET_FILE_DIR:SmartRenderer>
+                    COMMENT "Copying ANGLE DLLs to output directory"
+                )
                 
                 # Add preprocessor definition
                 target_compile_definitions(SmartRenderer PUBLIC USE_ANGLE=1)
             else()
                 message(WARNING "ANGLE libraries not found in ${ANGLE_LIB_DIR}")
             endif()
+        elseif(PLATFORM_MACOS)
+            set(ANGLE_LIB_DIR "${ANGLE_ROOT}/libs/mac")
+            
+            # macOS: Use .dylib libraries
+            set(ANGLE_EGL_LIB "${ANGLE_LIB_DIR}/libEGL.dylib")
+            set(ANGLE_GLES_LIB "${ANGLE_LIB_DIR}/libGLESv2.dylib")
+            
+            if(EXISTS "${ANGLE_EGL_LIB}" AND EXISTS "${ANGLE_GLES_LIB}")
+                message(STATUS "Found ANGLE EGL: ${ANGLE_EGL_LIB}")
+                message(STATUS "Found ANGLE GLESv2: ${ANGLE_GLES_LIB}")
+                target_link_libraries(SmartRenderer PRIVATE ${ANGLE_EGL_LIB} ${ANGLE_GLES_LIB})
+                target_compile_definitions(SmartRenderer PUBLIC USE_ANGLE=1)
+            else()
+                message(WARNING "ANGLE libraries not found in ${ANGLE_LIB_DIR}")
+            endif()
         endif()
     else()
-        message(WARNING "ANGLE headers not found. Please run third_party/setup_angle.ps1")
+        message(WARNING "ANGLE headers not found at ${ANGLE_INCLUDE_DIR}")
     endif()
 endif()
 
