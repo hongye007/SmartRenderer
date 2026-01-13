@@ -1,5 +1,6 @@
 #include "SmartRenderer.h"
 #include "ecs/ECSProtocol.h"
+#include "ecs/systems/RenderSystem.h"
 #include "core/RenderContext.h"
 #include <iostream>
 #include <memory>
@@ -85,8 +86,18 @@ int main() {
         renderer->BeginFrame();
         renderer->Clear(ClearFlags::Color, Color(0.1f, 0.1f, 0.15f, 1.0f));
         
-        // Update ECS World (this will render entities)
+        // Update ECS World (this will generate render commands)
         world->Update(deltaTime);
+        
+        // Execute render commands from RenderSystem
+        // Find RenderSystem and execute its command queue
+        // Note: In a full implementation, we'd have a better way to get the RenderSystem
+        // For now, we'll need to get it from the world or store a reference
+        // This is a temporary solution - in production, you'd want a better system registry
+        auto* renderSystem = world->GetSystem<RenderSystem>();
+        if (renderSystem) {
+            renderSystem->GetCommandQueue().Execute(*renderer);
+        }
         
         // End frame and present
         renderer->EndFrame();

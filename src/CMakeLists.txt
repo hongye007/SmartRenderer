@@ -6,6 +6,7 @@ set(CORE_SOURCES
     core/RenderNode.cpp
     core/RenderProtocol.cpp
     core/Renderer.cpp
+    core/RenderCommand.cpp
     SmartRenderer.cpp
 )
 

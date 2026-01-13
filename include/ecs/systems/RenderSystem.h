@@ -2,18 +2,20 @@
 
 #include "ecs/System.h"
 #include "ecs/Entity.h"
+#include "core/RenderCommand.h"
 #include "math/Matrix.h"
 #include <vector>
+#include <memory>
 
 namespace SmartRenderer {
 
 class World;
-class Renderer;
 
 // Render system - renders entities with Transform, Mesh, and Material components
+// Uses command pattern to decouple from Renderer
 class RenderSystem : public System {
 public:
-    RenderSystem(Renderer* renderer);
+    RenderSystem();
     
     void Update(World& world, float deltaTime) override;
     
@@ -23,9 +25,13 @@ public:
     void SetActiveCamera(Entity cameraEntity);
     Entity GetActiveCamera() const { return m_activeCamera; }
     
+    // Get command queue (for execution by Renderer or CommandExecutor)
+    RenderCommandQueue& GetCommandQueue() { return m_commandQueue; }
+    const RenderCommandQueue& GetCommandQueue() const { return m_commandQueue; }
+    
 private:
-    Renderer* m_renderer;
     Entity m_activeCamera;
+    RenderCommandQueue m_commandQueue;
     
     void RenderEntity(World& world, Entity entity, const Matrix4& viewProjMatrix);
 };

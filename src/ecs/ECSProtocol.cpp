@@ -192,7 +192,7 @@ bool ECSProtocol::ParseSystems(const json& systemsJson) {
         
         if (type == "RenderSystem") {
             auto* renderSystem = m_world->RegisterSystem<RenderSystem>(
-                std::make_unique<RenderSystem>(m_renderer)
+                std::make_unique<RenderSystem>()
             );
             #ifdef _DEBUG
             fprintf(stderr, "ECSProtocol: Registered RenderSystem\n");

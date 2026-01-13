@@ -5,7 +5,6 @@
 #include "ecs/components/Mesh.h"
 #include "ecs/components/Material.h"
 #include "ecs/components/Camera.h"
-#include "core/Renderer.h"
 #include "rendering/Shader.h"
 #include "rendering/VertexArray.h"
 #include "rendering/Texture.h"
@@ -14,14 +13,13 @@
 
 namespace SmartRenderer {
 
-RenderSystem::RenderSystem(Renderer* renderer) 
-    : m_renderer(renderer), m_activeCamera(INVALID_ENTITY) {
+RenderSystem::RenderSystem() 
+    : m_activeCamera(INVALID_ENTITY) {
 }
 
 void RenderSystem::Update(World& world, float deltaTime) {
-    if (!m_renderer) {
-        return;
-    }
+    // Clear command queue for this frame
+    m_commandQueue.Clear();
     
     // Find active camera
     if (m_activeCamera == INVALID_ENTITY) {
@@ -77,39 +75,42 @@ void RenderSystem::RenderEntity(World& world, Entity entity, const Matrix4& view
     Matrix4 modelMatrix = transform->GetMatrix();
     Matrix4 mvpMatrix = viewProjMatrix * modelMatrix;
     
-    // Bind shader
-    m_renderer->BindShader(material->shader);
+    // Generate render commands (decoupled from Renderer)
+    m_commandQueue.PushBindShader(material->shader);
     
-    // Set uniforms
+    // Set uniforms via commands
     if (material->shader && material->shader->IsValid()) {
         // Material color (for simplified 2D shader)
-        material->shader->SetUniform("uColor", 
-            material->albedo.r, 
-            material->albedo.g, 
-            material->albedo.b, 
+        m_commandQueue.PushSetUniformVec4(material->shader, "uColor",
+            material->albedo.r,
+            material->albedo.g,
+            material->albedo.b,
             material->albedo.a);
         
-        // Material properties (these uniforms may not exist in simple shader, but that's OK)
-        material->shader->SetUniform("uMetallic", material->metallic);
-        material->shader->SetUniform("uRoughness", material->roughness);
+        // Material properties
+        m_commandQueue.PushSetUniformFloat(material->shader, "uMetallic", material->metallic);
+        m_commandQueue.PushSetUniformFloat(material->shader, "uRoughness", material->roughness);
+        
+        // MVP matrix
+        m_commandQueue.PushSetUniformMatrix4(material->shader, "uMVP", mvpMatrix);
     } else {
         return;
     }
     
     // Textures
     if (material->albedoTexture) {
-        material->albedoTexture->Bind(0);
-        material->shader->SetUniform("uAlbedoTexture", 0);
+        m_commandQueue.PushBindTexture(material->albedoTexture.get(), 0);
+        m_commandQueue.PushSetUniformInt(material->shader, "uAlbedoTexture", 0);
     }
     
     // Bind vertex array and draw
     if (meshComp->mesh && meshComp->mesh->vertexArray) {
-        m_renderer->BindVertexArray(meshComp->mesh->vertexArray);
+        m_commandQueue.PushBindVertexArray(meshComp->mesh->vertexArray);
         
         if (meshComp->mesh->indexBuffer && meshComp->mesh->indexCount > 0) {
-            m_renderer->DrawElements(0, meshComp->mesh->indexCount);
+            m_commandQueue.PushDrawElements(meshComp->mesh->indexCount, 0);
         } else if (meshComp->mesh->vertexCount > 0) {
-            m_renderer->DrawArrays(0, meshComp->mesh->vertexCount);
+            m_commandQueue.PushDrawArrays(0, meshComp->mesh->vertexCount);
         }
     }
 }
