@@ -61,15 +61,15 @@ void ANGLEContext::Shutdown() {
     
     // Only destroy EGL objects if we created them (not using GLFW's)
     if (!m_usingGLFW) {
-        if (m_context != EGL_NO_CONTEXT) {
-            eglDestroyContext(m_display, m_context);
-        }
-        if (m_surface != EGL_NO_SURFACE) {
-            eglDestroySurface(m_display, m_surface);
-        }
-        if (m_display != EGL_NO_DISPLAY) {
-            eglTerminate(m_display);
-        }
+    if (m_context != EGL_NO_CONTEXT) {
+        eglDestroyContext(m_display, m_context);
+    }
+    if (m_surface != EGL_NO_SURFACE) {
+        eglDestroySurface(m_display, m_surface);
+    }
+    if (m_display != EGL_NO_DISPLAY) {
+        eglTerminate(m_display);
+    }
     }
 
     m_display = EGL_NO_DISPLAY;
@@ -84,7 +84,7 @@ bool ANGLEContext::MakeCurrent() {
     if (!m_initialized) {
         return false;
     }
-
+    
     return eglMakeCurrent(m_display, m_surface, m_surface, m_context) == EGL_TRUE;
 }
 
@@ -175,7 +175,7 @@ bool ANGLEContext::TryUseGLFWEGL(Window* window) {
     if (!glfwWindow) {
         return false;
     }
-
+    
     EGLDisplay glfwDisplay = glfwGetEGLDisplay();
     EGLContext glfwContext = glfwGetEGLContext(glfwWindow);
     EGLSurface glfwSurface = glfwGetEGLSurface(glfwWindow);
@@ -185,9 +185,9 @@ bool ANGLEContext::TryUseGLFWEGL(Window* window) {
         m_context = glfwContext;
         m_surface = glfwSurface;
         m_usingGLFW = true;
-        return true;
+    return true;
     }
-    #endif
+#endif
     return false;
 }
 

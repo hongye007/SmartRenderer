@@ -38,6 +38,7 @@ set(RENDERING_SOURCES
 set(RESOURCE_SOURCES
     resource/ResourceManager.cpp
     resource/AssetLoader.cpp
+    resource/ResourceRegistry.cpp
 )
 
 # ECS sources

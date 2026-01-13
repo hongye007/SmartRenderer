@@ -4,6 +4,8 @@
 #include "core/Renderer.h"
 #include "rendering/Shader.h"
 #include "rendering/Texture.h"
+#include <iostream>
+#include <string>
 
 namespace SmartRenderer {
 
