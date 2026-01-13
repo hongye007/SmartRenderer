@@ -17,7 +17,7 @@ int main() {
     config.windowHeight = 600;
     config.appName = "Texture Sample";
 
-    auto platform = CreatePlatform(PlatformType::macOS);
+    auto platform = CreatePlatform(); // Auto-detect platform
     if (!platform->Initialize(config)) {
         std::cerr << "Failed to initialize platform" << std::endl;
         return 1;

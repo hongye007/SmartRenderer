@@ -184,7 +184,7 @@ int main() {
     config.windowHeight = windowHeight;
     config.appName = "Render Graph Demo";
 
-    auto platform = CreatePlatform(PlatformType::Windows);
+    auto platform = CreatePlatform(); // Auto-detect platform
     if (!platform->Initialize(config)) {
         std::cerr << "Failed to initialize platform" << std::endl;
         return 1;

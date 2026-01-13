@@ -2,25 +2,29 @@
 
 #include "ecs/Component.h"
 #include "math/MathTypes.h"
-#include "rendering/Shader.h"
-#include "rendering/Texture.h"
-#include <memory>
+#include "resource/ResourceHandle.h"
 #include <map>
 #include <string>
 
 namespace SmartRenderer {
 
+// Forward declarations
+class Shader;
+class Texture;
+
 // Material component - shader and textures
+// Uses ResourceHandle for automatic lifetime management
 class Material : public Component {
 public:
-    Shader* shader = nullptr;
+    // Use ResourceHandle for automatic resource management
+    ShaderHandle shader;
     Color albedo = Color::White;
     
-    // Texture slots
-    std::shared_ptr<Texture> albedoTexture;
-    std::shared_ptr<Texture> normalTexture;
-    std::shared_ptr<Texture> metallicRoughnessTexture;
-    std::shared_ptr<Texture> emissiveTexture;
+    // Texture slots - all use ResourceHandle for consistency
+    TextureHandle albedoTexture;
+    TextureHandle normalTexture;
+    TextureHandle metallicRoughnessTexture;
+    TextureHandle emissiveTexture;
     
     // Material properties
     float metallic = 0.0f;
@@ -33,7 +37,10 @@ public:
     std::map<std::string, Vector4> vec4Uniforms;
     
     Material() = default;
-    Material(Shader* s) : shader(s) {}
+    Material(const ShaderHandle& s) : shader(s) {}
+    
+    // Convenience: check if material is valid (has shader)
+    bool IsValid() const { return shader.IsValid(); }
 };
 
 } // namespace SmartRenderer

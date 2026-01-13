@@ -39,7 +39,7 @@ int main() {
     config.windowHeight = 600;
     config.appName = "Simple Scene Sample";
 
-    auto platform = CreatePlatform(PlatformType::Windows);
+    auto platform = CreatePlatform(); // Auto-detect platform
     if (!platform->Initialize(config)) {
         std::cerr << "Failed to initialize platform" << std::endl;
         return 1;

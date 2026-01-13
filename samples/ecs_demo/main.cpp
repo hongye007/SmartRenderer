@@ -16,7 +16,7 @@ int main() {
     config.windowHeight = 768;
     config.appName = "ECS Demo";
     
-    auto platform = CreatePlatform(PlatformType::macOS);
+    auto platform = CreatePlatform(); // Auto-detect platform
     if (!platform->Initialize(config)) {
         std::cerr << "Failed to initialize platform" << std::endl;
         return 1;
@@ -30,13 +30,6 @@ int main() {
     }
     
     window->Show();
-    
-    // Poll events a few times to ensure window is fully displayed
-    // This is important for ANGLE to work correctly with GLFW on macOS
-    for (int i = 0; i < 5; ++i) {
-        window->PollEvents();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
     
     // Create renderer
     RendererConfig renderConfig;
@@ -104,9 +97,35 @@ int main() {
         renderer->Present();
     }
     
-    // Cleanup
+    // Cleanup order is critical:
+    // 1. Unbind all resources first
+    renderer->BindShader(nullptr);
+    renderer->BindTexture(nullptr, 0);
+    renderer->BindVertexArray(nullptr);
+    
+    // 2. Clear World before shutting down renderer
+    //    This ensures Material components (with ShaderHandle) are destroyed
+    //    while renderer is still valid
+    if (world) {
+        world->Clear();
+    }
+    
+    // 3. Shutdown renderer (after all resources are destroyed)
+    //    Note: ecsProtocol will be destroyed when going out of scope,
+    //    but World is already cleared, so Material components won't try to
+    //    destroy resources after renderer is shut down
     renderer->Shutdown();
+    renderer.reset();
+    
+    // 4. Destroy window
+    window->Destroy();
+    
+    // 5. Shutdown platform
     platform->Shutdown();
+    platform.reset();
+    
+    // 6. ecsProtocol will be destroyed here when going out of scope
+    //    But World is already cleared, so it's safe
     
     std::cout << "ECS Demo shutting down..." << std::endl;
     

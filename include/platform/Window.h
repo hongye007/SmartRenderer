@@ -5,8 +5,12 @@
 
 namespace SmartRenderer {
 
-// Forward declarations
-struct WindowHandle;
+// Unified window handle structure
+// For macOS/Windows: stores GLFWwindow* in window field
+// For Android/iOS: can store platform-specific window handle
+struct WindowHandle {
+    void* window;  // GLFWwindow* for macOS/Windows, platform-specific for others
+};
 
 // Window event callbacks
 using WindowResizeCallback = std::function<void(int width, int height)>;

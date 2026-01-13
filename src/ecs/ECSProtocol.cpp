@@ -24,7 +24,18 @@ ECSProtocol::ECSProtocol(Renderer* renderer)
 }
 
 ECSProtocol::~ECSProtocol() {
-    // Shaders are owned by renderer, meshes are shared_ptr
+    // Clear World first to destroy all components (including Material with ShaderHandle)
+    // This ensures resources are destroyed while renderer is still valid
+    if (m_world) {
+        m_world->Clear();
+    }
+    
+    // Clear shader cache (shaders should already be destroyed by Material components)
+    // But we still need to clear the cache to avoid dangling pointers
+    m_shaders.clear();
+    
+    // Meshes are shared_ptr, will be automatically cleaned up
+    m_meshes.clear();
 }
 
 bool ECSProtocol::LoadFromFile(const std::string& path) {
@@ -272,8 +283,20 @@ bool ECSProtocol::ParseEntities(const json& entitiesJson) {
             if (materialJson.contains("shader") && materialJson["shader"].is_string()) {
                 std::string shaderName = materialJson["shader"].get<std::string>();
                 auto it = m_shaders.find(shaderName);
-                if (it != m_shaders.end()) {
-                    material.shader = it->second;
+                if (it != m_shaders.end() && m_renderer) {
+                    // Create ShaderHandle from Shader* for automatic lifetime management
+                    // Note: This creates a handle that will destroy the shader when last reference is released
+                    // For proper resource management, consider using ResourceFactory/ResourceRegistry
+                    auto deleter = [](Renderer* renderer, Shader* s) {
+                        if (renderer && s) {
+                            try {
+                                renderer->DestroyShader(s);
+                            } catch (...) {
+                                // Ignore exceptions during cleanup
+                            }
+                        }
+                    };
+                    material.shader = ShaderHandle(it->second, m_renderer, deleter);
                 }
             }
             

@@ -14,7 +14,7 @@ int main() {
     config.windowHeight = 600;
     config.appName = "Window Test";
 
-    auto platform = SmartRenderer::CreatePlatform(SmartRenderer::PlatformType::Windows);
+    auto platform = SmartRenderer::CreatePlatform(); // Auto-detect platform
     if (!platform->Initialize(config)) {
         std::cerr << "Failed to initialize platform" << std::endl;
         return 1;

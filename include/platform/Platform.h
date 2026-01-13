@@ -70,7 +70,10 @@ public:
     virtual double GetTimeSinceStart() const = 0;
 };
 
-// Platform factory function
+// Platform factory functions
+// Automatically detects current platform
+std::unique_ptr<Platform> CreatePlatform();
+// Manually specify platform type
 std::unique_ptr<Platform> CreatePlatform(PlatformType type);
 
 } // namespace SmartRenderer

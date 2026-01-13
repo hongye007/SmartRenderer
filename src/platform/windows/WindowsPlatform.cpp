@@ -1,7 +1,5 @@
 #include "platform/windows/WindowsPlatform.h"
 #include "platform/windows/WindowsWindow.h"
-#include "platform/windows/WindowsInputManager.h"
-#include "platform/windows/WindowsFileSystem.h"
 #include "platform/Window.h"
 #include <windows.h>
 #include <shlobj.h>
@@ -41,12 +39,6 @@ bool WindowsPlatform::Initialize(const PlatformConfig& config) {
     auto duration = now.time_since_epoch();
     m_startTime = std::chrono::duration<double>(duration).count();
 
-    // Initialize input manager
-    m_inputManager = std::make_unique<WindowsInputManager>();
-
-    // Initialize file system
-    m_fileSystem = std::make_unique<WindowsFileSystem>();
-
     m_initialized = true;
     return true;
 }
@@ -56,8 +48,6 @@ void WindowsPlatform::Shutdown() {
         return;
     }
 
-    m_inputManager.reset();
-    m_fileSystem.reset();
     m_initialized = false;
 }
 
@@ -100,11 +90,11 @@ void WindowsPlatform::DestroyWindow(Window* window) {
 }
 
 InputManager* WindowsPlatform::GetInputManager() {
-    return m_inputManager.get();
+    return nullptr;
 }
 
 FileSystem* WindowsPlatform::GetFileSystem() {
-    return m_fileSystem.get();
+    return nullptr;
 }
 
 int WindowsPlatform::GetScreenWidth() const {

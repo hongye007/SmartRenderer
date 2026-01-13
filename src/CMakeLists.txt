@@ -39,6 +39,7 @@ set(RESOURCE_SOURCES
     resource/ResourceManager.cpp
     resource/AssetLoader.cpp
     resource/ResourceRegistry.cpp
+    resource/ResourceFactory.cpp
 )
 
 # ECS sources
@@ -54,12 +55,17 @@ set(ECS_SOURCES
 # Keep only the factory implementation
 
 # Platform-specific sources
+# GLFWWindowBase is shared by Windows and macOS
+if(PLATFORM_WINDOWS OR PLATFORM_MACOS)
+    list(APPEND PLATFORM_SOURCES
+        platform/GLFWWindowBase.cpp
+    )
+endif()
+
 if(PLATFORM_WINDOWS)
     list(APPEND PLATFORM_SOURCES
         platform/windows/WindowsPlatform.cpp
         platform/windows/WindowsWindow.cpp
-        platform/windows/WindowsInputManager.cpp
-        platform/windows/WindowsFileSystem.cpp
     )
 elseif(PLATFORM_MACOS)
     list(APPEND PLATFORM_SOURCES
@@ -140,7 +146,8 @@ elseif(PLATFORM_ANDROID)
     target_link_libraries(SmartRenderer PRIVATE ${ANDROID_LOG_LIB})
 endif()
 
-# GLFW integration for macOS
+# GLFW integration for macOS and Windows only
+# Android and iOS use native windowing APIs
 if(PLATFORM_MACOS)
     set(GLFW_ROOT "${CMAKE_SOURCE_DIR}/third_party/gl-env/glfw/mac")
     set(GLFW_INCLUDE_DIR "${GLFW_ROOT}/include")
@@ -152,6 +159,26 @@ if(PLATFORM_MACOS)
         
         # Link GLFW library
         set(GLFW_LIB "${GLFW_LIB_DIR}/libglfw3.a")
+        if(EXISTS "${GLFW_LIB}")
+            message(STATUS "Found GLFW library: ${GLFW_LIB}")
+            target_link_libraries(SmartRenderer PRIVATE ${GLFW_LIB})
+        else()
+            message(WARNING "GLFW library not found at ${GLFW_LIB}")
+        endif()
+    else()
+        message(WARNING "GLFW headers not found at ${GLFW_INCLUDE_DIR}")
+    endif()
+elseif(PLATFORM_WINDOWS)
+    set(GLFW_ROOT "${CMAKE_SOURCE_DIR}/third_party/gl-env/glfw/windows")
+    set(GLFW_INCLUDE_DIR "${GLFW_ROOT}/include")
+    set(GLFW_LIB_DIR "${GLFW_ROOT}/lib")
+    
+    if(EXISTS "${GLFW_INCLUDE_DIR}/GLFW/glfw3.h")
+        message(STATUS "Found GLFW headers: ${GLFW_INCLUDE_DIR}")
+        target_include_directories(SmartRenderer PUBLIC ${GLFW_INCLUDE_DIR})
+        
+        # Link GLFW library (Windows uses .lib)
+        set(GLFW_LIB "${GLFW_LIB_DIR}/glfw3.lib")
         if(EXISTS "${GLFW_LIB}")
             message(STATUS "Found GLFW library: ${GLFW_LIB}")
             target_link_libraries(SmartRenderer PRIVATE ${GLFW_LIB})

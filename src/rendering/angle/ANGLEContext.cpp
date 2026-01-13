@@ -4,10 +4,16 @@
 #include <cstring>
 #include <EGL/egl.h>
 #include <GLES3/gl3.h>
-#ifdef __APPLE__
+// GLFW only for Apple and Windows platforms
+#if defined(__APPLE__) || defined(_WIN32)
 #include <GLFW/glfw3.h>
+#ifdef __APPLE__
 #define GLFW_EXPOSE_NATIVE_COCOA
 #define GLFW_EXPOSE_NATIVE_EGL
+#elif defined(_WIN32)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_EGL
+#endif
 #include <GLFW/glfw3native.h>
 #endif
 
@@ -37,19 +43,50 @@ bool ANGLEContext::Initialize(Window* window, const ANGLEConfig& config) {
 
     ConfigureBackend(config);
 
-    // Try to use GLFW's EGL context first (if available)
-    if (TryUseGLFWEGL(window)) {
-        m_initialized = true;
-        return MakeCurrent();
+    #if defined(__APPLE__) || defined(_WIN32)
+    // On macOS and Windows, we require GLFW
+    WindowHandle* handle = window->GetNativeHandle();
+    if (!handle || !handle->window) {
+        fprintf(stderr, "Failed to get window handle (required on macOS/Windows)\n");
+        return false;
     }
 
-    // Fallback: Initialize EGL ourselves
+    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(handle->window);
+    if (!glfwWindow) {
+        fprintf(stderr, "Failed to get GLFW window (required on macOS/Windows)\n");
+        return false;
+    }
+    
+    // Get GLFW's EGL context and surface
+    EGLDisplay glfwDisplay = glfwGetEGLDisplay();
+    EGLContext glfwContext = glfwGetEGLContext(glfwWindow);
+    EGLSurface glfwSurface = glfwGetEGLSurface(glfwWindow);
+    
+    // On macOS/Windows, GLFW must provide EGL context and surface
+    if (glfwDisplay == EGL_NO_DISPLAY || glfwContext == EGL_NO_CONTEXT || glfwSurface == EGL_NO_SURFACE) {
+        fprintf(stderr, "Failed to get GLFW's EGL context/surface (required on macOS/Windows)\n");
+        return false;
+    }
+    
+    m_display = glfwDisplay;
+    m_context = glfwContext;
+    m_surface = glfwSurface;
+    m_usingGLFW = true;
+    
+    m_initialized = true;
+    fprintf(stderr, "Using GLFW's EGL context\n");
+    return MakeCurrent();
+    #else
+    // On Android/iOS, manually initialize EGL
     if (!InitializeEGL() || !CreateContext() || !CreateSurface(window)) {
+        fprintf(stderr, "Failed to initialize EGL\n");
         return false;
     }
 
     m_initialized = true;
+    fprintf(stderr, "Using our own EGL context\n");
     return MakeCurrent();
+    #endif
 }
 
 void ANGLEContext::Shutdown() {
@@ -161,90 +198,21 @@ bool ANGLEContext::CreateContext() {
     return m_context != EGL_NO_CONTEXT;
 }
 
-bool ANGLEContext::TryUseGLFWEGL(Window* window) {
-    #ifdef __APPLE__
-    void* handle = window->GetNativeHandle();
-    if (!handle) {
-        return false;
-    }
-
-    struct WindowHandle { void* nsWindow; void* nsView; };
-    WindowHandle* macHandle = static_cast<WindowHandle*>(handle);
-    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(macHandle->nsWindow);
-    
-    if (!glfwWindow) {
-        return false;
-    }
-    
-    EGLDisplay glfwDisplay = glfwGetEGLDisplay();
-    EGLContext glfwContext = glfwGetEGLContext(glfwWindow);
-    EGLSurface glfwSurface = glfwGetEGLSurface(glfwWindow);
-    
-    if (glfwDisplay != EGL_NO_DISPLAY && glfwContext != EGL_NO_CONTEXT && glfwSurface != EGL_NO_SURFACE) {
-        m_display = glfwDisplay;
-        m_context = glfwContext;
-        m_surface = glfwSurface;
-        m_usingGLFW = true;
-    return true;
-    }
-#endif
-    return false;
-}
-
 bool ANGLEContext::CreateSurface(Window* window) {
     if (!window) {
         return false;
     }
 
-    void* handle = window->GetNativeHandle();
-    if (!handle) {
+    // Android/iOS: Manually create surface using platform-specific handle
+    WindowHandle* handle = window->GetNativeHandle();
+    if (!handle || !handle->window) {
         return false;
     }
     
     EGLint surfaceAttribs[] = { EGL_NONE };
-    
-    #ifdef _WIN32
-    struct WindowHandle { void* hwnd; void* hdc; };
-    WindowHandle* winHandle = static_cast<WindowHandle*>(handle);
     m_surface = eglCreateWindowSurface(m_display, static_cast<EGLConfig>(m_config), 
-                                      static_cast<EGLNativeWindowType>(winHandle->hwnd), 
+                                      static_cast<EGLNativeWindowType>(handle->window), 
                                       surfaceAttribs);
-    #elif defined(__APPLE__)
-    // Fallback: use NSView directly (GLFW EGL should have been tried in Initialize)
-    struct WindowHandle { void* nsWindow; void* nsView; };
-    WindowHandle* macHandle = static_cast<WindowHandle*>(handle);
-    GLFWwindow* glfwWindow = static_cast<GLFWwindow*>(macHandle->nsWindow);
-    
-    if (!glfwWindow) {
-        return false;
-    }
-    
-    id nsView = glfwGetCocoaView(glfwWindow);
-    if (!nsView) {
-        return false;
-    }
-    
-    // Try eglCreatePlatformWindowSurface first, fallback to eglCreateWindowSurface
-    typedef EGLSurface (*PFNEGLCREATEPLATFORMWINDOWSURFACE)(EGLDisplay, EGLConfig, void*, const EGLAttrib*);
-    PFNEGLCREATEPLATFORMWINDOWSURFACE eglCreatePlatformWindowSurfacePtr = 
-        (PFNEGLCREATEPLATFORMWINDOWSURFACE)eglGetProcAddress("eglCreatePlatformWindowSurface");
-    
-    if (eglCreatePlatformWindowSurfacePtr) {
-        EGLAttrib platformAttribs[] = { EGL_NONE };
-        m_surface = eglCreatePlatformWindowSurfacePtr(m_display, static_cast<EGLConfig>(m_config), 
-                                                     nsView, platformAttribs);
-    }
-    
-    if (m_surface == EGL_NO_SURFACE) {
-        m_surface = eglCreateWindowSurface(m_display, static_cast<EGLConfig>(m_config), 
-                                          static_cast<EGLNativeWindowType>(nsView), 
-                                          surfaceAttribs);
-    }
-    #else
-    m_surface = eglCreateWindowSurface(m_display, static_cast<EGLConfig>(m_config), 
-                                      static_cast<EGLNativeWindowType>(handle), 
-                                      surfaceAttribs);
-    #endif
     
     return m_surface != EGL_NO_SURFACE;
 }

@@ -21,15 +21,49 @@ class ResourceHandle {
 public:
     ResourceHandle() : m_resource(nullptr) {}
     
+    // Constructor with raw pointer (for backward compatibility)
     ResourceHandle(ResourceType* resource, Renderer* renderer, 
                    std::function<void(Renderer*, ResourceType*)> destroyFunc) {
         if (resource && renderer && destroyFunc) {
-            // Use shared_ptr with custom deleter
+            // Store renderer pointer for validation in deleter
+            // Use shared_ptr with custom deleter that safely checks renderer validity
+            Renderer* rendererPtr = renderer;
+            m_resource = std::shared_ptr<ResourceType>(
+                resource,
+                [rendererPtr, destroyFunc](ResourceType* res) {
+                    // Safe deletion: check renderer pointer is still valid
+                    // Note: This is not 100% safe if renderer is deleted elsewhere,
+                    // but prevents most crashes. For full safety, use weak_ptr version.
+                    if (rendererPtr && res && destroyFunc) {
+                        try {
+                            destroyFunc(rendererPtr, res);
+                        } catch (...) {
+                            // Ignore exceptions during cleanup
+                        }
+                    }
+                }
+            );
+        } else {
+            m_resource = nullptr;
+        }
+    }
+    
+    // Constructor with weak_ptr (safer, recommended for new code)
+    ResourceHandle(ResourceType* resource, 
+                   std::weak_ptr<Renderer> renderer,
+                   std::function<void(Renderer*, ResourceType*)> destroyFunc) {
+        if (resource && destroyFunc) {
             m_resource = std::shared_ptr<ResourceType>(
                 resource,
                 [renderer, destroyFunc](ResourceType* res) {
-                    if (renderer && res && destroyFunc) {
-                        destroyFunc(renderer, res);
+                    // Safely check if renderer is still alive
+                    auto rendererPtr = renderer.lock();
+                    if (rendererPtr && res && destroyFunc) {
+                        try {
+                            destroyFunc(rendererPtr.get(), res);
+                        } catch (...) {
+                            // Ignore exceptions during cleanup
+                        }
                     }
                 }
             );

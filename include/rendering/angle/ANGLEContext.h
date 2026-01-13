@@ -67,7 +67,6 @@ private:
     bool m_initialized;
     bool m_usingGLFW;  // Track if using GLFW's EGL context
 
-    bool TryUseGLFWEGL(Window* window);
     bool InitializeEGL();
     bool CreateContext();
     bool CreateSurface(Window* window);

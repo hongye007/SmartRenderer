@@ -67,7 +67,7 @@ void RenderSystem::RenderEntity(World& world, Entity entity, const Matrix4& view
     MeshComponent* meshComp = world.GetComponent<MeshComponent>(entity);
     Material* material = world.GetComponent<Material>(entity);
     
-    if (!transform || !meshComp || !meshComp->mesh || !material || !material->shader) {
+    if (!transform || !meshComp || !meshComp->mesh || !material || !material->shader.IsValid()) {
         return;
     }
     
@@ -75,32 +75,41 @@ void RenderSystem::RenderEntity(World& world, Entity entity, const Matrix4& view
     Matrix4 modelMatrix = transform->GetMatrix();
     Matrix4 mvpMatrix = viewProjMatrix * modelMatrix;
     
+    // Get shader pointer from handle
+    Shader* shader = material->shader.Get();
+    if (!shader) {
+        return;
+    }
+    
     // Generate render commands (decoupled from Renderer)
-    m_commandQueue.PushBindShader(material->shader);
+    m_commandQueue.PushBindShader(shader);
     
     // Set uniforms via commands
-    if (material->shader && material->shader->IsValid()) {
+    if (shader && shader->IsValid()) {
         // Material color (for simplified 2D shader)
-        m_commandQueue.PushSetUniformVec4(material->shader, "uColor",
+        m_commandQueue.PushSetUniformVec4(shader, "uColor",
             material->albedo.r,
             material->albedo.g,
             material->albedo.b,
             material->albedo.a);
         
         // Material properties
-        m_commandQueue.PushSetUniformFloat(material->shader, "uMetallic", material->metallic);
-        m_commandQueue.PushSetUniformFloat(material->shader, "uRoughness", material->roughness);
+        m_commandQueue.PushSetUniformFloat(shader, "uMetallic", material->metallic);
+        m_commandQueue.PushSetUniformFloat(shader, "uRoughness", material->roughness);
         
         // MVP matrix
-        m_commandQueue.PushSetUniformMatrix4(material->shader, "uMVP", mvpMatrix);
+        m_commandQueue.PushSetUniformMatrix4(shader, "uMVP", mvpMatrix);
     } else {
         return;
     }
     
     // Textures
-    if (material->albedoTexture) {
-        m_commandQueue.PushBindTexture(material->albedoTexture.get(), 0);
-        m_commandQueue.PushSetUniformInt(material->shader, "uAlbedoTexture", 0);
+    if (material->albedoTexture.IsValid()) {
+        Texture* texture = material->albedoTexture.Get();
+        if (texture) {
+            m_commandQueue.PushBindTexture(texture, 0);
+            m_commandQueue.PushSetUniformInt(shader, "uAlbedoTexture", 0);
+        }
     }
     
     // Bind vertex array and draw

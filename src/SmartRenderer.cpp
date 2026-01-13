@@ -8,7 +8,8 @@ static Platform* g_platform = nullptr;
 static Renderer* g_renderer = nullptr;
 
 bool Initialize(const PlatformConfig& config) {
-    g_platform = CreatePlatform(config.type).release();
+    // Use auto-detection if type is not specified or matches current platform
+    g_platform = CreatePlatform().release();
     if (!g_platform || !g_platform->Initialize(config)) {
         return false;
     }

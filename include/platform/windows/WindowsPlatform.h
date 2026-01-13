@@ -1,7 +1,6 @@
 #pragma once
 
 #include "platform/Platform.h"
-#include <memory>
 
 namespace SmartRenderer {
 
@@ -39,8 +38,6 @@ private:
     PlatformConfig m_config;
     bool m_initialized;
     double m_startTime;
-    std::unique_ptr<InputManager> m_inputManager;
-    std::unique_ptr<FileSystem> m_fileSystem;
 };
 
 } // namespace SmartRenderer
