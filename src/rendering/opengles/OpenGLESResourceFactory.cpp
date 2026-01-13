@@ -158,6 +158,7 @@ bool OpenGLESShaderImpl::LinkProgram(GLuint vertexShader, GLuint fragmentShader)
     // Bind attribute location for GLSL ES 100 (OpenGL ES 2.0)
     // In ES 2.0, we need to bind attributes before linking
     glBindAttribLocation(m_programID, 0, "aPosition");
+    glBindAttribLocation(m_programID, 1, "aTexCoord");
     
     glLinkProgram(m_programID);
 

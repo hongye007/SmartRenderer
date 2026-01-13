@@ -4,6 +4,7 @@
 #include "core/Renderer.h"
 #include "platform/Platform.h"
 #include "platform/Window.h"
+#include "resource/ResourceManager.h"
 #include "math/MathTypes.h"
 
 namespace SmartRenderer {

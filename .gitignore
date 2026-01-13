@@ -19,6 +19,7 @@ lib/
 *.sln.docstates
 *.swp
 *.swo
+*.cache
 *~
 
 # CMake
