@@ -39,16 +39,26 @@ int main() {
         return 1;
     }
 
-    // Load texture using ResourceManager
+    // Load texture using ResourceManager (completely decoupled from Renderer)
     ResourceManager resourceManager;
-    resourceManager.SetRenderer(renderer.get());
     
     // Try to load a real image file, fallback to generated texture if not found
     Texture* texture = nullptr;
     bool textureFromResourceManager = false;
     std::string imagePath = "/Users/admin/Downloads/test.jpg";
     
-    texture = resourceManager.LoadTexture(imagePath);
+    // Load texture data (ResourceManager only handles data loading)
+    TextureData textureData;
+    if (resourceManager.LoadTextureData(imagePath, textureData)) {
+        // Create GPU texture from cached data (user creates it via Renderer)
+        texture = renderer->CreateTexture(
+            textureData.width,
+            textureData.height,
+            textureData.format,
+            textureData.data.data()
+        );
+        textureFromResourceManager = true;
+    }
     
     if (!texture) {
         std::cerr << "Failed to load texture from: " << imagePath << std::endl;
@@ -185,15 +195,15 @@ void main() {
     renderer->DestroyBuffer(vertexBuffer);
     renderer->DestroyShader(shader);
     
-    // 3. Clear ResourceManager before shutting down renderer
-    // ResourceManager needs renderer to destroy its managed resources
-    resourceManager.Clear();
-    
-    // 4. Destroy texture only if it was NOT loaded through ResourceManager
-    // (ResourceManager already destroyed it in Clear() if it was managed)
-    if (!textureFromResourceManager && texture != nullptr) {
+    // 3. Destroy texture (ResourceManager only caches data, doesn't manage GPU resources)
+    // So we need to destroy the texture regardless of how it was created
+    if (texture != nullptr) {
         renderer->DestroyTexture(texture);
     }
+    
+    // 4. Clear ResourceManager cache (only clears data cache, not GPU resources)
+    // ResourceManager is completely decoupled - no Renderer dependency
+    resourceManager.Clear();
     
     // 5. Shutdown renderer (this will clean up OpenGL context)
     // Must be done after all resources are destroyed

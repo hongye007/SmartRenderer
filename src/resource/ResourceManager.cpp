@@ -1,10 +1,5 @@
 #include "resource/ResourceManager.h"
-#include "resource/Mesh.h"
 #include "resource/AssetLoader.h"
-#include "rendering/Shader.h"
-#include "rendering/Texture.h"
-#include "core/Renderer.h"
-#include <stdexcept>
 #include <iostream>
 #include <cstring>
 
@@ -14,26 +9,23 @@
 
 namespace SmartRenderer {
 
-ResourceManager::ResourceManager()
-    : m_renderer(nullptr) {
+ResourceManager::ResourceManager() {
 }
 
 ResourceManager::~ResourceManager() {
     Clear();
 }
 
-Shader* ResourceManager::LoadShader(const std::string& name,
-                                    const std::string& vertexPath,
-                                    const std::string& fragmentPath) {
-    // Check if already loaded
-    auto it = m_shaders.find(name);
-    if (it != m_shaders.end()) {
-        return it->second.get();
-    }
-
-    if (!m_renderer) {
-        std::cerr << "ResourceManager: Renderer not set" << std::endl;
-        return nullptr;
+// Load and cache shader source data
+bool ResourceManager::LoadShaderSource(const std::string& name,
+                                       const std::string& vertexPath,
+                                       const std::string& fragmentPath,
+                                       ShaderSource& outSource) {
+    // Check if already cached
+    auto it = m_shaderSourceCache.find(name);
+    if (it != m_shaderSourceCache.end()) {
+        outSource = it->second;
+        return true;
     }
 
     // Load shader source files
@@ -42,32 +34,38 @@ Shader* ResourceManager::LoadShader(const std::string& name,
 
     if (vertexSource.empty() || fragmentSource.empty()) {
         std::cerr << "ResourceManager: Failed to load shader files" << std::endl;
-        return nullptr;
+        return false;
     }
 
-    // Create shader using renderer
-    Shader* shader = m_renderer->CreateShader(vertexSource, fragmentSource);
-    if (shader && shader->IsValid()) {
-        m_shaders[name] = std::unique_ptr<Shader>(shader);
-        return shader;
-    }
+    // Cache the source
+    ShaderSource source;
+    source.vertexSource = std::move(vertexSource);
+    source.fragmentSource = std::move(fragmentSource);
+    m_shaderSourceCache[name] = source;
+    outSource = source;
+    return true;
+}
 
-    std::cerr << "ResourceManager: Failed to compile shader: " << name << std::endl;
-    if (shader) {
-        m_renderer->DestroyShader(shader);
+// Get cached shader source
+const ShaderSource* ResourceManager::GetShaderSource(const std::string& name) const {
+    auto it = m_shaderSourceCache.find(name);
+    if (it != m_shaderSourceCache.end()) {
+        return &it->second;
     }
     return nullptr;
 }
 
-Texture* ResourceManager::LoadTexture(const std::string& path) {
-    auto it = m_textures.find(path);
-    if (it != m_textures.end()) {
-        return it->second.get();
-    }
+bool ResourceManager::HasShaderSource(const std::string& name) const {
+    return m_shaderSourceCache.find(name) != m_shaderSourceCache.end();
+}
 
-    if (!m_renderer) {
-        std::cerr << "ResourceManager: Renderer not set" << std::endl;
-        return nullptr;
+// Load and cache texture data
+bool ResourceManager::LoadTextureData(const std::string& path, TextureData& outData) {
+    // Check if already cached
+    auto it = m_textureDataCache.find(path);
+    if (it != m_textureDataCache.end()) {
+        outData = it->second;
+        return true;
     }
 
     // Load image using stb_image
@@ -77,13 +75,13 @@ Texture* ResourceManager::LoadTexture(const std::string& path) {
     if (!imageData) {
         std::cerr << "ResourceManager: Failed to load texture: " << path << std::endl;
         std::cerr << "  Error: " << stbi_failure_reason() << std::endl;
-        return nullptr;
+        return false;
     }
 
     if (width <= 0 || height <= 0) {
         std::cerr << "ResourceManager: Invalid texture dimensions: " << width << "x" << height << std::endl;
         stbi_image_free(imageData);
-        return nullptr;
+        return false;
     }
 
     // Determine format: 0 = RGBA, 1 = RGB
@@ -119,7 +117,7 @@ Texture* ResourceManager::LoadTexture(const std::string& path) {
     } else {
         std::cerr << "ResourceManager: Unsupported channel count: " << channels << std::endl;
         stbi_image_free(imageData);
-        return nullptr;
+        return false;
     }
 
     // Flip image vertically (OpenGL expects origin at bottom-left, images have origin at top-left)
@@ -138,50 +136,58 @@ Texture* ResourceManager::LoadTexture(const std::string& path) {
     } else {
         delete[] textureData;
     }
+
+    // Store in cache
+    TextureData cachedData;
+    cachedData.width = width;
+    cachedData.height = height;
+    cachedData.format = format;
+    cachedData.data.assign(flippedData, flippedData + width * height * bytesPerPixel);
     
-    textureData = flippedData;
+    // Free flipped image data
+    delete[] flippedData;
 
-    // Create texture (this should copy the data, so we can free it after)
-    // format: 0 = RGBA, 1 = RGB
-    Texture* texture = m_renderer->CreateTexture(width, height, format, textureData);
-    
-    // Free flipped image data after texture creation
-    delete[] textureData;
-
-    if (!texture) {
-        std::cerr << "ResourceManager: Failed to create texture from image data" << std::endl;
-        return nullptr;
-    }
-
-    m_textures[path] = std::unique_ptr<Texture>(texture);
-    return texture;
+    m_textureDataCache[path] = cachedData;
+    outData = cachedData;
+    return true;
 }
 
-Mesh* ResourceManager::LoadMesh(const std::string& path) {
-    auto it = m_meshes.find(path);
-    if (it != m_meshes.end()) {
-        return it->second.get();
+// Get cached texture data
+const TextureData* ResourceManager::GetTextureData(const std::string& path) const {
+    auto it = m_textureDataCache.find(path);
+    if (it != m_textureDataCache.end()) {
+        return &it->second;
     }
-    // Stub implementation
     return nullptr;
 }
 
-void ResourceManager::UnloadShader(const std::string& name) {
-    m_shaders.erase(name);
+bool ResourceManager::HasTextureData(const std::string& path) const {
+    return m_textureDataCache.find(path) != m_textureDataCache.end();
 }
 
-void ResourceManager::UnloadTexture(const std::string& path) {
-    m_textures.erase(path);
+bool ResourceManager::LoadMeshData(const std::string& path) {
+    // TODO: implement mesh data loading and caching
+    (void)path; // Suppress unused parameter warning
+    return false;
 }
 
-void ResourceManager::UnloadMesh(const std::string& path) {
-    m_meshes.erase(path);
+void ResourceManager::UnloadShaderSource(const std::string& name) {
+    m_shaderSourceCache.erase(name);
+}
+
+void ResourceManager::UnloadTextureData(const std::string& path) {
+    m_textureDataCache.erase(path);
+}
+
+void ResourceManager::UnloadMeshData(const std::string& path) {
+    // TODO: implement mesh data cache
+    (void)path; // Suppress unused parameter warning
 }
 
 void ResourceManager::Clear() {
-    m_shaders.clear();
-    m_textures.clear();
-    m_meshes.clear();
+    m_textureDataCache.clear();
+    m_shaderSourceCache.clear();
+    // TODO: clear mesh data cache
 }
 
 } // namespace SmartRenderer

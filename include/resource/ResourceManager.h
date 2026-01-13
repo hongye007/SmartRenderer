@@ -1,41 +1,48 @@
 #pragma once
 
+#include "TextureData.h"
 #include <string>
-#include <memory>
 #include <unordered_map>
 
 namespace SmartRenderer {
 
-class Shader;
-class Texture;
-class Mesh;
-
-class Renderer;
-
+// ResourceManager: Pure data loading and caching
+// Completely decoupled from Renderer - no knowledge of GPU resources
+// Users create GPU resources themselves using the cached data
 class ResourceManager {
 public:
     ResourceManager();
     ~ResourceManager();
 
-    void SetRenderer(Renderer* renderer) { m_renderer = renderer; }
+    // Load and cache resource data (no GPU resources created)
+    bool LoadTextureData(const std::string& path, TextureData& outData);
+    bool LoadShaderSource(const std::string& name,
+                         const std::string& vertexPath,
+                         const std::string& fragmentPath,
+                         ShaderSource& outSource);
+    bool LoadMeshData(const std::string& path); // TODO: implement
 
-    Shader* LoadShader(const std::string& name,
-                      const std::string& vertexPath,
-                      const std::string& fragmentPath);
-    Texture* LoadTexture(const std::string& path);
-    Mesh* LoadMesh(const std::string& path);
+    // Check if resource is cached
+    bool HasTextureData(const std::string& path) const;
+    bool HasShaderSource(const std::string& name) const;
 
-    void UnloadShader(const std::string& name);
-    void UnloadTexture(const std::string& path);
-    void UnloadMesh(const std::string& path);
+    // Get cached resource data
+    const TextureData* GetTextureData(const std::string& path) const;
+    const ShaderSource* GetShaderSource(const std::string& name) const;
 
+    // Unload cached data
+    void UnloadTextureData(const std::string& path);
+    void UnloadShaderSource(const std::string& name);
+    void UnloadMeshData(const std::string& path);
+
+    // Clear all cached data
     void Clear();
 
 private:
-    Renderer* m_renderer;
-    std::unordered_map<std::string, std::unique_ptr<Shader>> m_shaders;
-    std::unordered_map<std::string, std::unique_ptr<Texture>> m_textures;
-    std::unordered_map<std::string, std::unique_ptr<Mesh>> m_meshes;
+    // Cache resource data (not GPU resources)
+    std::unordered_map<std::string, TextureData> m_textureDataCache;
+    std::unordered_map<std::string, ShaderSource> m_shaderSourceCache;
+    // TODO: mesh data cache
 };
 
 } // namespace SmartRenderer
