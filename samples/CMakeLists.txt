@@ -47,6 +47,12 @@ if(BUILD_SAMPLES)
     )
     target_link_libraries(resource_factory_demo PRIVATE SmartRenderer)
 
+    # Image outline sample
+    add_executable(image_outline
+        image_outline/main.cpp
+    )
+    target_link_libraries(image_outline PRIVATE SmartRenderer)
+
     if(PLATFORM_WINDOWS)
         target_link_libraries(window_test PRIVATE user32 gdi32)
         target_link_libraries(basic_triangle PRIVATE user32 gdi32)
@@ -56,11 +62,12 @@ if(BUILD_SAMPLES)
         target_link_libraries(ecs_demo PRIVATE user32 gdi32)
         target_link_libraries(resource_handle_demo PRIVATE user32 gdi32)
         target_link_libraries(resource_factory_demo PRIVATE user32 gdi32)
+        target_link_libraries(image_outline PRIVATE user32 gdi32)
         
         # Copy ANGLE DLLs to sample output directories
         if(USE_ANGLE)
             set(ANGLE_LIB_DIR "${CMAKE_SOURCE_DIR}/third_party/gl-env/angle/libs/windows")
-            foreach(SAMPLE_TARGET window_test basic_triangle texture_sample simple_scene render_graph_demo ecs_demo resource_handle_demo resource_factory_demo)
+            foreach(SAMPLE_TARGET window_test basic_triangle texture_sample simple_scene render_graph_demo ecs_demo resource_handle_demo resource_factory_demo image_outline)
                 add_custom_command(TARGET ${SAMPLE_TARGET} POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         "${ANGLE_LIB_DIR}/libEGL.dll"
